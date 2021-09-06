@@ -1,0 +1,45 @@
+{
+  "Actions": [
+    {
+      "Icon": "Images/clockifyIcon",
+      "Name": "Clockify",
+      "States": [
+        {
+          "Image": "Images/toggleActionInactiveIcon",
+          "TitleAlignment": "middle",
+          "TitleColor": "#1E1E1E",
+          "FontSize": "10"
+        },
+        {
+          "Image": "Images/toggleActionActiveIcon",
+          "TitleAlignment": "middle",
+          "TitleColor": "#1E1E1E",
+          "FontSize": "10"
+        }
+      ],
+      "SupportedInMultiActions": false,
+      "Tooltip": "Toggle a pre-defined Clockify timer",
+      "UUID": "dev.duerrenberger.clockify.toggle",
+      "PropertyInspectorPath": "PropertyInspector/PluginActionPI.html"
+    }
+  ],
+  "Author": "Lukas Duerrenberger",
+  "Name": "Clockify",
+  "Description": "Stream Deck integration for Clockify, the most popular free time tracker available for an unlimited numbers of users for free.",
+  "Icon": "Images/clockifyIcon",
+  "URL": "https://duerrenberger.dev",
+  "Version": "1.0",
+  "CodePath": "Clockify",
+  "Category": "Time Tracking",
+  "CategoryIcon": "Images/categoryTimerIcon",
+  "OS": [
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "4.9"
+  }
+}
