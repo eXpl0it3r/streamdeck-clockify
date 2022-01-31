@@ -203,7 +203,7 @@ namespace Clockify
                 return;
             }
 
-            var projectResponse = await _clockifyClient.FindAllProjectsOnWorkspaceAsync(workspace.Id);
+            var projectResponse = await _clockifyClient.FindAllProjectsOnWorkspaceAsync(workspace.Id, pageSize: 5000);
             if (!projectResponse.IsSuccessful)
             {
                 return;
