@@ -17,7 +17,7 @@
           "FontSize": "10"
         }
       ],
-      "SupportedInMultiActions": false,
+      "SupportedInMultiActions": true,
       "Tooltip": "Toggle a pre-defined Clockify timer",
       "UUID": "dev.duerrenberger.clockify.toggle",
       "PropertyInspectorPath": "PropertyInspector/PluginActionPI.html"
