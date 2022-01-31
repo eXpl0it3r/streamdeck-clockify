@@ -28,7 +28,7 @@
   "Description": "Stream Deck integration for Clockify, the most popular free time tracker available for an unlimited numbers of users for free.",
   "Icon": "Images/clockifyIcon",
   "URL": "https://duerrenberger.dev",
-  "Version": "1.1",
+  "Version": "1.2",
   "CodePath": "Clockify",
   "Category": "Time Tracking",
   "CategoryIcon": "Images/categoryTimerIcon",

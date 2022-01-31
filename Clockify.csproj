@@ -9,7 +9,16 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <StartupObject>Clockify.Program</StartupObject>
-    <AssemblyVersion>1.1</AssemblyVersion>
+    <AssemblyVersion>1.2</AssemblyVersion>
+    <PackageVersion>1.2</PackageVersion>
+    <Title>Clockify</Title>
+    <Authors>Lukas Dürrenberger</Authors>
+    <Description>This plugin allows you to track, start and stop Clockify timers on your Elgato Stream Deck</Description>
+    <Copyright>Copyright (c) 2021-2022 Lukas Dürrenberger</Copyright>
+    <PackageProjectUrl>https://github.com/eXpl0it3r/streamdeck-clockify</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/eXpl0it3r/streamdeck-clockify/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageIconUrl>https://github.com/eXpl0it3r/streamdeck-clockify/blob/master/Images/clockifyIcon%402x.png</PackageIconUrl>
+    <RepositoryUrl>https://github.com/eXpl0it3r/streamdeck-clockify</RepositoryUrl>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net5.0-windows|AnyCPU'">
     <OutputPath>bin\Debug\dev.duerrenberger.clockify.sdPlugin\</OutputPath>
