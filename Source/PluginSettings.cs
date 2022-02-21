@@ -14,6 +14,9 @@ namespace Clockify
         [JsonProperty(PropertyName = "projectName")]
         public string ProjectName { get; set; } = string.Empty;
         
+        [JsonProperty(PropertyName = "taskName")]
+        public string TaskName { get; set; } = string.Empty;
+        
         [JsonProperty(PropertyName = "timerName")]
         public string TimeName { get; set; } = string.Empty;
     }

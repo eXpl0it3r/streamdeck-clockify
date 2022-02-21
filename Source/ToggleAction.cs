@@ -45,7 +45,7 @@ namespace Clockify
 
             if (_clockifyContext.IsValid())
             {
-                await _clockifyContext.ToggleTimerAsync(_settings.WorkspaceName, _settings.ProjectName, _settings.TimeName);
+                await _clockifyContext.ToggleTimerAsync(_settings.WorkspaceName, _settings.ProjectName, _settings.TaskName, _settings.TimeName);
             }
             else
             {
@@ -58,18 +58,19 @@ namespace Clockify
             if (_clockifyContext.IsValid())
             {
                 var timer = await _clockifyContext.GetRunningTimerAsync(_settings.WorkspaceName, _settings.ProjectName, _settings.TimeName);
+                var timerText = CreateTimerText();
+                
                 if (timer?.TimeInterval.Start != null)
                 {
                     var timeDifference = DateTime.UtcNow - timer.TimeInterval.Start.Value.UtcDateTime;
-                    var title = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
-                    title = string.IsNullOrEmpty(_settings.TimeName) ? $"{_settings.ProjectName}\n{title}" : $"{_settings.TimeName}\n{title}";
+                    var timerTime = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
 
-                    await Connection.SetTitleAsync(title);
+                    await Connection.SetTitleAsync($"{timerText}\n{timerTime}");
                     await Connection.SetStateAsync(ActiveState);
                 }
                 else
                 {
-                    await Connection.SetTitleAsync(string.IsNullOrEmpty(_settings.TimeName) ? $"{_settings.ProjectName}" : $"{_settings.TimeName}");
+                    await Connection.SetTitleAsync(timerText);
                     await Connection.SetStateAsync(InactiveState);
                 }
             }
@@ -89,6 +90,16 @@ namespace Clockify
 
         public override void ReceivedGlobalSettings(ReceivedGlobalSettingsPayload payload)
         {
+        }
+
+        private string CreateTimerText()
+        {
+            if (string.IsNullOrEmpty(_settings.TimeName))
+            {
+                return string.IsNullOrEmpty(_settings.TaskName) ? $"{_settings.ProjectName}" : $"{_settings.ProjectName}:\n{_settings.TaskName}";
+            }
+
+            return $"{_settings.TimeName}";
         }
 
         private Task SaveSettings()

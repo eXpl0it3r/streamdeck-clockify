@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using BarRaider.SdTools;
 using Clockify.Net;
 using Clockify.Net.Models.Projects;
+using Clockify.Net.Models.Tasks;
 using Clockify.Net.Models.TimeEntries;
 using Clockify.Net.Models.Users;
 using Clockify.Net.Models.Workspaces;
@@ -24,43 +26,60 @@ namespace Clockify
             return _clockifyClient != null;
         }
 
-        public async Task ToggleTimerAsync(string workspaceName, string projectName = null, string timerName = null)
+        public async Task ToggleTimerAsync(string workspaceName, string projectName = null, string taskName = null, string timerName = null)
         {
-            if (_clockifyClient == null
-                || _workspaces.All(w => w.Name != workspaceName)
-                || !string.IsNullOrEmpty(projectName) && (!_projects.ContainsKey(workspaceName) || _projects[workspaceName].All(p => p.Name != projectName)))
+            try
             {
-                Logger.Instance.LogMessage(TracingLevel.WARN, $"Invalid settings for toggle {workspaceName}, {projectName}, {timerName}");
-                return;
-            }
 
-            var runningTimer = await GetRunningTimerAsync(workspaceName, projectName, timerName);
+                if (_clockifyClient == null
+                    || _workspaces.All(w => w.Name != workspaceName)
+                    || !string.IsNullOrEmpty(projectName) && (!_projects.ContainsKey(workspaceName) || _projects[workspaceName].All(p => p.Name != projectName)))
+                {
+                    Logger.Instance.LogMessage(TracingLevel.WARN, $"Invalid settings for toggle {workspaceName}, {projectName}, {timerName}");
+                    return;
+                }
 
-            if (runningTimer != null)
-            {
+                var runningTimer = await GetRunningTimerAsync(workspaceName, projectName, timerName);
+
+                if (runningTimer != null)
+                {
+                    await StopRunningTimerAsync(workspaceName);
+                    return;
+                }
+
                 await StopRunningTimerAsync(workspaceName);
-                return;
-            }
-            
-            await StopRunningTimerAsync(workspaceName);
-            
-            var workspace = _workspaces.Single(w => w.Name == workspaceName);
-            var timeEntryRequest = new TimeEntryRequest
-            {
-                UserId = _currentUser.Id,
-                WorkspaceId = workspace.Id,
-                Description = timerName,
-                Start = DateTimeOffset.UtcNow
-            };
 
-            if (!string.IsNullOrEmpty(projectName))
-            {
-                var project = _projects[workspaceName].Single(p => p.Name == projectName);
-                timeEntryRequest.ProjectId = project.Id;
+                var workspace = _workspaces.Single(w => w.Name == workspaceName);
+                var timeEntryRequest = new TimeEntryRequest
+                {
+                    UserId = _currentUser.Id,
+                    WorkspaceId = workspace.Id,
+                    Description = timerName,
+                    Start = DateTimeOffset.UtcNow
+                };
+
+                if (!string.IsNullOrEmpty(projectName))
+                {
+                    var project = _projects[workspaceName].Single(p => p.Name == projectName);
+                    timeEntryRequest.ProjectId = project.Id;
+
+                    if (!string.IsNullOrEmpty(taskName))
+                    {
+                        var taskId = await FindOrCreateTaskAsync(workspace, project, taskName);
+                        if (taskId != null)
+                        {
+                            timeEntryRequest.TaskId = taskId;
+                        }
+                    }
+                }
+
+                await _clockifyClient.CreateTimeEntryAsync(workspace.Id, timeEntryRequest);
+                Logger.Instance.LogMessage(TracingLevel.INFO, $"Toggle Timer {workspaceName}, {projectName}, {taskName}, {timerName}");
             }
-            
-            await _clockifyClient.CreateTimeEntryAsync(workspace.Id, timeEntryRequest);
-            Logger.Instance.LogMessage(TracingLevel.INFO, $"Toggle Timer {workspaceName}, {projectName}, {timerName}");
+            catch (Exception exception)
+            {
+                Logger.Instance.LogMessage(TracingLevel.ERROR, exception.Message);
+            }
         }
 
         public async Task StopRunningTimerAsync(string workspaceName)
@@ -83,11 +102,12 @@ namespace Clockify
                 Start = runningTimer.TimeInterval.Start,
                 End = DateTimeOffset.UtcNow,
                 ProjectId = runningTimer.ProjectId,
+                TaskId = runningTimer.TaskId,
                 Description = runningTimer.Description
             };
             
             await _clockifyClient.UpdateTimeEntryAsync(workspace.Id, runningTimer.Id, timerUpdate);
-            Logger.Instance.LogMessage(TracingLevel.INFO, $"Timer Stopped {workspaceName}, {runningTimer.ProjectId}, {runningTimer.Description}");
+            Logger.Instance.LogMessage(TracingLevel.INFO, $"Timer Stopped {workspaceName}, {runningTimer.ProjectId}, {runningTimer.TaskId}, {runningTimer.Description}");
         }
 
         public async Task<TimeEntryDtoImpl> GetRunningTimerAsync(string workspaceName, string projectName = null, string timeName = null)
@@ -208,8 +228,37 @@ namespace Clockify
             {
                 return;
             }
-
+            
             _projects[workspace.Name] = projectResponse.Data;
+        }
+
+        private async Task<string> FindOrCreateTaskAsync(WorkspaceDto workspace, ProjectDtoImpl project, string taskName)
+        {
+            var taskResponse = await _clockifyClient.FindAllTasksAsync(workspace.Id, project.Id, name: taskName, pageSize: 5000);
+
+            if (!taskResponse.IsSuccessful)
+            {
+                return null;
+            }
+            
+            if (taskResponse.Data.Any())
+            {
+                return taskResponse.Data.First().Id;
+            }
+            
+            var taskRequest = new TaskRequest
+            {
+                Name = taskName
+            };
+
+            var creationResponse = await _clockifyClient.CreateTaskAsync(workspace.Id, project.Id, taskRequest);
+
+            if (!creationResponse.IsSuccessful)
+            {
+                return null;
+            }
+
+            return creationResponse.Data.Id;
         }
 
         private async Task<bool> TestConnectionAsync()

@@ -14,6 +14,7 @@ Until the plugin is available in the [Stream Deck Store](https://apps.elgato.com
 - **API Key:** *(required)* Provide your 48 characters long [Clockify API Key](https://clockify.me/user/settings), which is required for the plugin to work
 - **Workspace Name:** *(required)* Write the name of the workspace you want to run/track timers in
 - **Project Name:** *(optional)* Provide the name of an existing project to run/track a timer for
+- **Task Name:** *(optional)* Set the name of the project specific task
 - **Timer Name:** *(optional)* Specify a name for the timer you want to run/track
 
 https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-8279-579840ce0a6b.mp4
