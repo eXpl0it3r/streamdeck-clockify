@@ -3,12 +3,14 @@
     <TargetFrameworks>net5.0-windows</TargetFrameworks>
     <UseWindowsForms>false</UseWindowsForms>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <AssemblyName>Clockify</AssemblyName>
-    <RootNamespace></RootNamespace>
+    <AssemblyName>dev.duerrenberger.clockify</AssemblyName>
     <OutputType>Exe</OutputType>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <StartupObject>Clockify.Program</StartupObject>
+    <CodeAnalysisRuleSet>StyleCop.ruleset</CodeAnalysisRuleSet>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <AssemblyVersion>1.2</AssemblyVersion>
     <PackageVersion>1.2</PackageVersion>
     <Title>Clockify</Title>
@@ -19,13 +21,17 @@
     <PackageLicenseUrl>https://github.com/eXpl0it3r/streamdeck-clockify/blob/master/LICENSE</PackageLicenseUrl>
     <PackageIconUrl>https://github.com/eXpl0it3r/streamdeck-clockify/blob/master/Images/clockifyIcon%402x.png</PackageIconUrl>
     <RepositoryUrl>https://github.com/eXpl0it3r/streamdeck-clockify</RepositoryUrl>
+    <RootNamespace />
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net5.0-windows|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>bin\Debug\dev.duerrenberger.clockify.sdPlugin\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net5.0-windows|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <OutputPath>bin\Release\dev.duerrenberger.clockify.sdPlugin\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PublishDir>bin\Publish\dev.duerrenberger.clockify.sdPlugin\</PublishDir>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Clockify.Net" Version="1.14.0" />
@@ -34,6 +40,10 @@
     <PackageReference Include="NLog" Version="4.7.13" />
     <PackageReference Include="streamdeck-client-csharp" Version="4.3.0" />
     <PackageReference Include="StreamDeck-Tools" Version="3.2.0" />
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <None Update="Images\categoryIcon%402x.png">

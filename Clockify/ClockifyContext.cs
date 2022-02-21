@@ -16,9 +16,9 @@ namespace Clockify
     {
         private string _apiKey = string.Empty;
         private ClockifyClient _clockifyClient;
-        private CurrentUserDto _currentUser = new();
-        private List<WorkspaceDto> _workspaces = new();
-        private Dictionary<string, List<ProjectDtoImpl>> _projects = new();
+        private CurrentUserDto _currentUser = new ();
+        private Dictionary<string, List<ProjectDtoImpl>> _projects = new ();
+        private List<WorkspaceDto> _workspaces = new ();
 
         public bool IsValid()
         {
@@ -27,58 +27,50 @@ namespace Clockify
 
         public async Task ToggleTimerAsync(string workspaceName, string projectName = null, string taskName = null, string timerName = null)
         {
-            try
+            if (_clockifyClient == null
+                || _workspaces.All(w => w.Name != workspaceName)
+                || !string.IsNullOrEmpty(projectName) && (!_projects.ContainsKey(workspaceName) || _projects[workspaceName].All(p => p.Name != projectName)))
             {
+                Logger.Instance.LogMessage(TracingLevel.WARN, $"Invalid settings for toggle {workspaceName}, {projectName}, {timerName}");
+                return;
+            }
 
-                if (_clockifyClient == null
-                    || _workspaces.All(w => w.Name != workspaceName)
-                    || !string.IsNullOrEmpty(projectName) && (!_projects.ContainsKey(workspaceName) || _projects[workspaceName].All(p => p.Name != projectName)))
-                {
-                    Logger.Instance.LogMessage(TracingLevel.WARN, $"Invalid settings for toggle {workspaceName}, {projectName}, {timerName}");
-                    return;
-                }
+            var runningTimer = await GetRunningTimerAsync(workspaceName, projectName, timerName);
 
-                var runningTimer = await GetRunningTimerAsync(workspaceName, projectName, timerName);
-
-                if (runningTimer != null)
-                {
-                    await StopRunningTimerAsync(workspaceName);
-                    return;
-                }
-
+            if (runningTimer != null)
+            {
                 await StopRunningTimerAsync(workspaceName);
+                return;
+            }
 
-                var workspace = _workspaces.Single(w => w.Name == workspaceName);
-                var timeEntryRequest = new TimeEntryRequest
+            await StopRunningTimerAsync(workspaceName);
+
+            var workspace = _workspaces.Single(w => w.Name == workspaceName);
+            var timeEntryRequest = new TimeEntryRequest
+            {
+                UserId = _currentUser.Id,
+                WorkspaceId = workspace.Id,
+                Description = timerName,
+                Start = DateTimeOffset.UtcNow
+            };
+
+            if (!string.IsNullOrEmpty(projectName))
+            {
+                var project = _projects[workspaceName].Single(p => p.Name == projectName);
+                timeEntryRequest.ProjectId = project.Id;
+
+                if (!string.IsNullOrEmpty(taskName))
                 {
-                    UserId = _currentUser.Id,
-                    WorkspaceId = workspace.Id,
-                    Description = timerName,
-                    Start = DateTimeOffset.UtcNow
-                };
-
-                if (!string.IsNullOrEmpty(projectName))
-                {
-                    var project = _projects[workspaceName].Single(p => p.Name == projectName);
-                    timeEntryRequest.ProjectId = project.Id;
-
-                    if (!string.IsNullOrEmpty(taskName))
+                    var taskId = await FindOrCreateTaskAsync(workspace, project, taskName);
+                    if (taskId != null)
                     {
-                        var taskId = await FindOrCreateTaskAsync(workspace, project, taskName);
-                        if (taskId != null)
-                        {
-                            timeEntryRequest.TaskId = taskId;
-                        }
+                        timeEntryRequest.TaskId = taskId;
                     }
                 }
+            }
 
-                await _clockifyClient.CreateTimeEntryAsync(workspace.Id, timeEntryRequest);
-                Logger.Instance.LogMessage(TracingLevel.INFO, $"Toggle Timer {workspaceName}, {projectName}, {taskName}, {timerName}");
-            }
-            catch (Exception exception)
-            {
-                Logger.Instance.LogMessage(TracingLevel.ERROR, exception.Message);
-            }
+            await _clockifyClient.CreateTimeEntryAsync(workspace.Id, timeEntryRequest);
+            Logger.Instance.LogMessage(TracingLevel.INFO, $"Toggle Timer {workspaceName}, {projectName}, {taskName}, {timerName}");
         }
 
         public async Task StopRunningTimerAsync(string workspaceName)
@@ -87,14 +79,14 @@ namespace Clockify
             {
                 return;
             }
-            
+
             var workspace = _workspaces.Single(w => w.Name == workspaceName);
             var runningTimer = await GetRunningTimerAsync(workspaceName);
             if (runningTimer == null)
             {
                 return;
             }
-            
+
             var timerUpdate = new UpdateTimeEntryRequest
             {
                 Billable = runningTimer.Billable,
@@ -104,7 +96,7 @@ namespace Clockify
                 TaskId = runningTimer.TaskId,
                 Description = runningTimer.Description
             };
-            
+
             await _clockifyClient.UpdateTimeEntryAsync(workspace.Id, runningTimer.Id, timerUpdate);
             Logger.Instance.LogMessage(TracingLevel.INFO, $"Timer Stopped {workspaceName}, {runningTimer.ProjectId}, {runningTimer.TaskId}, {runningTimer.Description}");
         }
@@ -125,12 +117,12 @@ namespace Clockify
             {
                 return null;
             }
-            
+
             if (string.IsNullOrEmpty(projectName))
             {
                 return string.IsNullOrEmpty(timeName) ? timeEntries.Data.FirstOrDefault() : timeEntries.Data.FirstOrDefault(t => t.Description == timeName);
             }
-            
+
             var project = _projects[workspaceName].Single(p => p.Name == projectName);
             return string.IsNullOrEmpty(timeName) ? timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id) : timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id && t.Description == timeName);
         }
@@ -158,7 +150,7 @@ namespace Clockify
                 {
                     await UpdateProjectsAsync(workspace.Name);
                 }
-                
+
                 return true;
             }
 
@@ -227,7 +219,7 @@ namespace Clockify
             {
                 return;
             }
-            
+
             _projects[workspace.Name] = projectResponse.Data;
         }
 
@@ -239,12 +231,12 @@ namespace Clockify
             {
                 return null;
             }
-            
+
             if (taskResponse.Data.Any())
             {
                 return taskResponse.Data.First().Id;
             }
-            
+
             var taskRequest = new TaskRequest
             {
                 Name = taskName
@@ -272,7 +264,7 @@ namespace Clockify
             {
                 return false;
             }
-            
+
             _currentUser = user.Data;
             return true;
         }

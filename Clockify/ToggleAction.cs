@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Threading.Tasks;
 using BarRaider.SdTools;
 using Newtonsoft.Json.Linq;
-using System.Threading.Tasks;
 
 namespace Clockify
 {
@@ -10,8 +10,8 @@ namespace Clockify
     {
         private static readonly uint InactiveState = 0;
         private static readonly uint ActiveState = 1;
-        private readonly PluginSettings _settings;
         private readonly ClockifyContext _clockifyContext;
+        private readonly PluginSettings _settings;
 
         public ToggleAction(ISDConnection connection, InitialPayload payload)
             : base(connection, payload)
@@ -59,7 +59,7 @@ namespace Clockify
             {
                 var timer = await _clockifyContext.GetRunningTimerAsync(_settings.WorkspaceName, _settings.ProjectName, _settings.TimeName);
                 var timerText = CreateTimerText();
-                
+
                 if (timer?.TimeInterval.Start != null)
                 {
                     var timeDifference = DateTime.UtcNow - timer.TimeInterval.Start.Value.UtcDateTime;

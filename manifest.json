@@ -29,7 +29,7 @@
   "Icon": "Images/clockifyIcon",
   "URL": "https://duerrenberger.dev",
   "Version": "1.2",
-  "CodePath": "Clockify",
+  "CodePath": "dev.duerrenberger.clockify",
   "Category": "Time Tracking",
   "CategoryIcon": "Images/categoryTimerIcon",
   "OS": [
