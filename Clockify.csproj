@@ -4,7 +4,7 @@
     <UseWindowsForms>false</UseWindowsForms>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AssemblyName>Clockify</AssemblyName>
-    <RootNamespace>Clockify</RootNamespace>
+    <RootNamespace></RootNamespace>
     <OutputType>Exe</OutputType>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
