@@ -1,5 +1,5 @@
 ﻿// ****************************************************************
-// * EasyPI v1.3
+// * EasyPI v1.3.3
 // * Author: BarRaider
 // *
 // * JS library to simplify the communication between the 
@@ -7,6 +7,8 @@
 // *
 // * Project page: https://github.com/BarRaider/streamdeck-easypi
 // * Support: http://discord.barraider.com
+// *
+// * Initially forked from Elgato's common.js file
 // ****************************************************************
 
 var websocket = null,
@@ -35,6 +37,7 @@ function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, 
     document.dispatchEvent(event);
 
     loadConfiguration(actionInfo.payload.settings);
+    initPropertyInspector();
 }
 
 function websocketOnOpen() {
@@ -52,16 +55,12 @@ function websocketOnMessage(evt) {
     // Received message from Stream Deck
     var jsonObj = JSON.parse(evt.data);
 
-    if (jsonObj.event === 'sendToPropertyInspector') {
-        var payload = jsonObj.payload;
-        loadConfiguration(payload);
-    }
-    else if (jsonObj.event === 'didReceiveSettings') {
+    if (jsonObj.event === 'didReceiveSettings') {
         var payload = jsonObj.payload;
         loadConfiguration(payload.settings);
     }
     else {
-        console.log("Unhandled websocketOnMessage: " + jsonObj.event);
+        console.log("Ignored websocketOnMessage: " + jsonObj.event);
     }
 }
 
@@ -216,8 +215,31 @@ window.addEventListener('beforeunload', function (e) {
     // Don't set a returnValue to the event, otherwise Chromium with throw an error.
 });
 
+function prepareDOMElements(baseElement) {
+    baseElement = baseElement || document;
+
+    /**
+     * You could add a 'label' to a textares, e.g. to show the number of charactes already typed
+     * or contained in the textarea. This helper updates this label for you.
+     */
+    baseElement.querySelectorAll('textarea').forEach((e) => {
+        const maxl = e.getAttribute('maxlength');
+        e.targets = baseElement.querySelectorAll(`[for='${e.id}']`);
+        if (e.targets.length) {
+            let fn = () => {
+                for (let x of e.targets) {
+                    x.textContent = maxl ? `${e.value.length}/${maxl}` : `${e.value.length}`;
+                }
+            };
+            fn();
+            e.onkeyup = fn;
+        }
+    });
+}
+
 function initPropertyInspector() {
     // Place to add functions
+    prepareDOMElements(document);
 }
 
 

@@ -11,8 +11,8 @@
     <CodeAnalysisRuleSet>StyleCop.ruleset</CodeAnalysisRuleSet>
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
-    <AssemblyVersion>1.3</AssemblyVersion>
-    <PackageVersion>1.3</PackageVersion>
+    <AssemblyVersion>1.4</AssemblyVersion>
+    <PackageVersion>1.4</PackageVersion>
     <Title>Clockify</Title>
     <Authors>Lukas Dürrenberger</Authors>
     <Description>This plugin allows you to track, start and stop Clockify timers on your Elgato Stream Deck</Description>
@@ -34,10 +34,11 @@
     <PublishDir>bin\Publish\dev.duerrenberger.clockify.sdPlugin\</PublishDir>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Clockify.Net" Version="1.14.0" />
+    <PackageReference Include="Clockify.Net" Version="2.0.0" />
     <PackageReference Include="CommandLineParser" Version="2.8.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-    <PackageReference Include="NLog" Version="4.7.13" />
+    <PackageReference Include="NLog" Version="4.7.15" />
+    <PackageReference Include="runtime.osx.10.10-x64.CoreCompat.System.Drawing" Version="6.0.5.128" />
     <PackageReference Include="streamdeck-client-csharp" Version="4.3.0" />
     <PackageReference Include="StreamDeck-Tools" Version="3.2.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">

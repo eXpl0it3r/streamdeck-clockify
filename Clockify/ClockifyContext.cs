@@ -50,7 +50,7 @@ namespace Clockify
             {
                 UserId = _currentUser.Id,
                 WorkspaceId = workspace.Id,
-                Description = timerName,
+                Description = timerName ?? string.Empty,
                 Start = DateTimeOffset.UtcNow
             };
 
@@ -113,7 +113,7 @@ namespace Clockify
 
             var workspace = _workspaces.Single(w => w.Name == workspaceName);
             var timeEntries = await _clockifyClient.FindAllTimeEntriesForUserAsync(workspace.Id, _currentUser.Id, inProgress: true);
-            if (!timeEntries.IsSuccessful)
+            if (!timeEntries.IsSuccessful || timeEntries.Data == null)
             {
                 return null;
             }
@@ -227,7 +227,7 @@ namespace Clockify
         {
             var taskResponse = await _clockifyClient.FindAllTasksAsync(workspace.Id, project.Id, name: taskName, pageSize: 5000);
 
-            if (!taskResponse.IsSuccessful)
+            if (!taskResponse.IsSuccessful || taskResponse.Data == null)
             {
                 return null;
             }
@@ -244,7 +244,7 @@ namespace Clockify
 
             var creationResponse = await _clockifyClient.CreateTaskAsync(workspace.Id, project.Id, taskRequest);
 
-            if (!creationResponse.IsSuccessful)
+            if (!creationResponse.IsSuccessful || creationResponse.Data == null)
             {
                 return null;
             }

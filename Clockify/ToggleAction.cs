@@ -8,8 +8,9 @@ namespace Clockify
     [PluginActionId("dev.duerrenberger.clockify.toggle")]
     public class ToggleAction : PluginBase
     {
-        private static readonly uint InactiveState = 0;
-        private static readonly uint ActiveState = 1;
+        private const uint InactiveState = 0;
+        private const uint ActiveState = 1;
+        
         private readonly ClockifyContext _clockifyContext;
         private readonly PluginSettings _settings;
 

@@ -25,7 +25,10 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
   - Your API Key is likely incorrect
 - Why am I not seeing the running timer on my button?
   - Make sure you haven't set a title, as this will override any other content
-  - Make sure the API Key, Workspace name and optional the project and timer name match
+  - Make sure the API Key, Workspace name and optional the project and timer name 
+- Why does the timer always start with a negative number?
+  - This can happen when your local computer time isn't in sync with the Clockify server time
+  - Make sure you synchronize your clock with a time server
 - Why can't I select my Workspace and Project in a dropdown menu?
   - Because I was lazy 😅
 - IT DOESN'T WORK, WHY?!?
