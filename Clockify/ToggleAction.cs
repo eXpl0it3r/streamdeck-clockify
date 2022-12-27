@@ -77,7 +77,7 @@ namespace Clockify
             }
             else if (_settings.ApiKey.Length == 48)
             {
-                await _clockifyContext.SetApiKeyAsync(_settings.ApiKey);
+                await _clockifyContext.SetApiKeyAsync(_settings.ServerUrl, _settings.ApiKey);
             }
         }
 
@@ -86,7 +86,7 @@ namespace Clockify
             Tools.AutoPopulateSettings(_settings, payload.Settings);
             Logger.Instance.LogMessage(TracingLevel.INFO, $"Settings Received: {_settings}");
             await SaveSettings();
-            await _clockifyContext.SetApiKeyAsync(_settings.ApiKey);
+            await _clockifyContext.SetApiKeyAsync(_settings.ServerUrl, _settings.ApiKey);
         }
 
         public override void ReceivedGlobalSettings(ReceivedGlobalSettingsPayload payload)

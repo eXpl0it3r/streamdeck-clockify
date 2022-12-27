@@ -15,6 +15,7 @@ namespace Clockify
     public class ClockifyContext
     {
         private string _apiKey = string.Empty;
+        private string _serverUrl = string.Empty;
         private ClockifyClient _clockifyClient;
         private CurrentUserDto _currentUser = new ();
         private Dictionary<string, List<ProjectDtoImpl>> _projects = new ();
@@ -127,18 +128,25 @@ namespace Clockify
             return string.IsNullOrEmpty(timeName) ? timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id) : timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id && t.Description == timeName);
         }
 
-        public async Task<bool> SetApiKeyAsync(string apiKey)
+        public async Task<bool> SetApiKeyAsync(string serverUrl, string apiKey)
         {
-            if (_clockifyClient == null || apiKey != _apiKey)
+            if (_clockifyClient == null || apiKey != _apiKey || serverUrl != _serverUrl)
             {
+                if (!Uri.IsWellFormedUriString(serverUrl, UriKind.Absolute))
+                {
+                    Logger.Instance.LogMessage(TracingLevel.WARN, "Server URL is invalid");
+                    return false;
+                }
+                
                 if (apiKey.Length != 48)
                 {
                     Logger.Instance.LogMessage(TracingLevel.WARN, "Invalid API key format");
                     return false;
                 }
 
+                _serverUrl = serverUrl;
                 _apiKey = apiKey;
-                _clockifyClient = new ClockifyClient(_apiKey);
+                _clockifyClient = new ClockifyClient(_apiKey, serverUrl);
             }
 
             if (await TestConnectionAsync())

@@ -16,6 +16,7 @@ Until the plugin is available in the [Stream Deck Store](https://apps.elgato.com
 - **Project Name:** *(optional)* Provide the name of an existing project to run/track a timer for
 - **Task Name:** *(optional)* Set the name of the project specific task
 - **Timer Name:** *(optional)* Specify a name for the timer you want to run/track
+- **Server Url:** *(required)* Change from the *default* URL to the API URL of your own/company instance
 
 https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-8279-579840ce0a6b.mp4
 
