@@ -34,7 +34,11 @@
             </div>
             <div class="sdpi-item">
                 <div class="sdpi-item-label">Title Format</div>
-                <input class="sdpi-item-value sdProperty" id="titleFormat" value="{projectName}:\n{taskName}\n{timer}" oninput="setSettings()">
+                <div class="sdpi-item-value textarea">
+                    <textarea type="textarea" maxlength="100" id="titleFormat">{projectName}:
+{taskName}
+{timer}</textarea>
+                </div>
             </div>
             <div class="sdpi-item">
                 <div class="sdpi-item-label">Server Url</div>
