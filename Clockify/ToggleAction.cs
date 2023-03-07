@@ -46,7 +46,7 @@ namespace Clockify
 
             if (_clockifyContext.IsValid())
             {
-                await _clockifyContext.ToggleTimerAsync(_settings.WorkspaceName, _settings.ProjectName, _settings.TaskName, _settings.TimeName);
+                await _clockifyContext.ToggleTimerAsync(_settings.WorkspaceName, _settings.ProjectName, _settings.TaskName, _settings.TimerName);
             }
             else
             {
@@ -58,7 +58,7 @@ namespace Clockify
         {
             if (_clockifyContext.IsValid())
             {
-                var timer = await _clockifyContext.GetRunningTimerAsync(_settings.WorkspaceName, _settings.ProjectName, _settings.TimeName);
+                var timer = await _clockifyContext.GetRunningTimerAsync(_settings.WorkspaceName, _settings.ProjectName, _settings.TimerName);
                 var timerText = CreateTimerText();
 
                 if (timer?.TimeInterval.Start != null)
