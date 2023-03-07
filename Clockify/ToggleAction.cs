@@ -59,21 +59,20 @@ namespace Clockify
             if (_clockifyContext.IsValid())
             {
                 var timer = await _clockifyContext.GetRunningTimerAsync(_settings.WorkspaceName, _settings.ProjectName, _settings.TimerName);
-                var timerText = CreateTimerText();
+                var timerTime = string.Empty;
 
                 if (timer?.TimeInterval.Start != null)
                 {
                     var timeDifference = DateTime.UtcNow - timer.TimeInterval.Start.Value.UtcDateTime;
-                    var timerTime = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
-
-                    await Connection.SetTitleAsync($"{timerText}\n{timerTime}");
+                    timerTime = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
                     await Connection.SetStateAsync(ActiveState);
                 }
                 else
                 {
-                    await Connection.SetTitleAsync(timerText);
                     await Connection.SetStateAsync(InactiveState);
                 }
+                
+                await Connection.SetTitleAsync(CreateTimerText(timerTime));
             }
             else if (_settings.ApiKey.Length == 48)
             {
@@ -93,14 +92,13 @@ namespace Clockify
         {
         }
 
-        private string CreateTimerText()
+        private string CreateTimerText(string timerTime)
         {
-            if (string.IsNullOrEmpty(_settings.TimeName))
-            {
-                return string.IsNullOrEmpty(_settings.TaskName) ? $"{_settings.ProjectName}" : $"{_settings.ProjectName}:\n{_settings.TaskName}";
-            }
-
-            return $"{_settings.TimeName}";
+            return _settings.TitleFormat
+                .Replace("{projectName}", _settings.ProjectName)
+                .Replace("{taskName}", _settings.TaskName)
+                .Replace("{timerName}", _settings.TimerName)
+                .Replace("{timer}", timerTime);
         }
 
         private Task SaveSettings()
