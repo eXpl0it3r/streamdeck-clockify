@@ -94,6 +94,26 @@ namespace Clockify
 
         private string CreateTimerText(string timerTime)
         {
+            if (string.IsNullOrEmpty(_settings.TitleFormat))
+            {
+                string timerText;
+                if (string.IsNullOrEmpty(_settings.TimerName))
+                {
+                    timerText = string.IsNullOrEmpty(_settings.TaskName) ? $"{_settings.ProjectName}" : $"{_settings.ProjectName}:\n{_settings.TaskName}";
+                }
+                else
+                {
+                    timerText = $"{_settings.TimerName}";
+                }
+
+                if (!string.IsNullOrEmpty(timerTime))
+                {
+                    timerText += $"\n{timerTime}";
+                }
+
+                return timerText;
+            }
+
             return _settings.TitleFormat
                 .Replace("{projectName}", _settings.ProjectName)
                 .Replace("{taskName}", _settings.TaskName)
