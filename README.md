@@ -20,10 +20,10 @@ Until the plugin is available in the [Stream Deck Store](https://apps.elgato.com
 - **Advanced**
   - **Title Format:** *(optional)* Specify the format for the title to be displayed on the button.
     - This can include any of:
-      - {projectName} : The project name
-      - {taskName} : The task name 
-      - {timerName} : The timer name 
-      - {timer} : The current timer value when running. Blank when not running
+      - `{projectName}` : The project name
+      - `{taskName}` : The task name 
+      - `{timerName}` : The timer name 
+      - `{timer}` : The current timer value when running. Blank when not running
   - **Server Url:** *(required)* Change from the *default* URL to the API URL of your own/company instance
 
 https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-8279-579840ce0a6b.mp4
