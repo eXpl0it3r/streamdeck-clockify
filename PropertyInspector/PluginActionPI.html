@@ -32,17 +32,22 @@
                 <div class="sdpi-item-label">Timer Name</div>
                 <input class="sdpi-item-value sdProperty" id="timerName" value="" placeholder="Enter the name of the Timer" oninput="setSettings()">
             </div>
-            <div class="sdpi-item">
-                <div class="sdpi-item-label">Title Format</div>
-                <div class="sdpi-item-value textarea">
-                    <textarea class="sdpi-item-value sdProperty" id="titleFormat" type="textarea" maxlength="100" oninput="setSettings()">{projectName}:
+            <div type="group" class="sdpi-item" id="advanced">
+                <div class="sdpi-item-label">Advanced</div>
+                <div class="sdpi-item-group" id="messagegroup_items">
+                    <div class="sdpi-item">
+                        <div class="sdpi-item-label">Title Format</div>
+                        <div class="sdpi-item-value textarea">
+                            <textarea class="sdpi-item-value sdProperty" id="titleFormat" type="textarea" maxlength="100" oninput="setSettings()">{projectName}:
 {taskName}
 {timer}</textarea>
+                        </div>
+                    </div>
+                    <div class="sdpi-item">
+                        <div class="sdpi-item-label">Server Url</div>
+                        <input class="sdpi-item-value sdProperty" id="serverUrl" value="https://api.clockify.me/api/v1" placeholder="Enter the ULR of the Server" oninput="setSettings()" required>
+                    </div>
                 </div>
-            </div>
-            <div class="sdpi-item">
-                <div class="sdpi-item-label">Server Url</div>
-                <input class="sdpi-item-value sdProperty" id="serverUrl" value="https://api.clockify.me/api/v1" placeholder="Enter the ULR of the Server" oninput="setSettings()" required>
             </div>
         </div>
     </body>
