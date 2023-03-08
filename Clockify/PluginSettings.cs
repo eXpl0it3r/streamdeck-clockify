@@ -20,7 +20,7 @@ namespace Clockify
         public string TimerName { get; set; } = string.Empty;
         
         [JsonProperty(PropertyName = "titleFormat")]
-        public string TitleFormat { get; set; } = "{projectName}:\n{taskName}\n{timer}";
+        public string TitleFormat { get; set; } = string.Empty;
 
         [JsonProperty(PropertyName = "serverUrl")]
         public string ServerUrl { get; set; } = "https://api.clockify.me/api/v1";
