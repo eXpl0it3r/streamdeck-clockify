@@ -47,6 +47,7 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
 
 - Feel free to star this repository and follow me on [Twitter](https://twitter.com/DarkCisum)
 - Thanks to [Bar Raiders](https://barraider.com/) for the great tooling and community
+- Shout-out to [Hugh Macdonald](https://github.com/HughMacdonald) for adding the text formatting feature!
 - Took some inspirations from the [Toggl plugin](https://github.com/tobimori/streamdeck-toggl)
 - Using a CC0 licensed [Timer image](https://www.svgrepo.com/svg/23258/timer) for the Time Tracking category
 - Talking to Clockify with the [Clockify.Net](https://github.com/Morasiu/Clockify.Net) library

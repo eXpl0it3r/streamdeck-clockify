@@ -10,12 +10,12 @@
     <CodeAnalysisRuleSet>StyleCop.ruleset</CodeAnalysisRuleSet>
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
-    <AssemblyVersion>1.5</AssemblyVersion>
-    <PackageVersion>1.5</PackageVersion>
+    <AssemblyVersion>1.6</AssemblyVersion>
+    <PackageVersion>1.6</PackageVersion>
     <Title>Clockify</Title>
     <Authors>Lukas Dürrenberger</Authors>
     <Description>This plugin allows you to track, start and stop Clockify timers on your Elgato Stream Deck</Description>
-    <Copyright>Copyright (c) 2021-2022 Lukas Dürrenberger</Copyright>
+    <Copyright>Copyright (c) 2021-2023 Lukas Dürrenberger</Copyright>
     <PackageProjectUrl>https://github.com/eXpl0it3r/streamdeck-clockify</PackageProjectUrl>
     <PackageLicenseUrl>https://github.com/eXpl0it3r/streamdeck-clockify/blob/master/LICENSE</PackageLicenseUrl>
     <PackageIconUrl>https://github.com/eXpl0it3r/streamdeck-clockify/blob/master/Images/clockifyIcon%402x.png</PackageIconUrl>
