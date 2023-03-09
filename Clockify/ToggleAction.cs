@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 namespace Clockify
 {
     [PluginActionId("dev.duerrenberger.clockify.toggle")]
-    public class ToggleAction : PluginBase
+    public class ToggleAction : KeypadBase
     {
         private const uint InactiveState = 0;
         private const uint ActiveState = 1;
