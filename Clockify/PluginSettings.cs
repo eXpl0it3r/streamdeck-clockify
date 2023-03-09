@@ -17,8 +17,11 @@ namespace Clockify
         public string TaskName { get; set; } = string.Empty;
 
         [JsonProperty(PropertyName = "timerName")]
-        public string TimeName { get; set; } = string.Empty;
+        public string TimerName { get; set; } = string.Empty;
         
+        [JsonProperty(PropertyName = "titleFormat")]
+        public string TitleFormat { get; set; } = string.Empty;
+
         [JsonProperty(PropertyName = "serverUrl")]
         public string ServerUrl { get; set; } = "https://api.clockify.me/api/v1";
     }

@@ -10,13 +10,21 @@ Until the plugin is available in the [Stream Deck Store](https://apps.elgato.com
 
 ## Setup
 
-- **Title:** Override the title being set by the plugin, leave empty otherwise
-- **API Key:** *(required)* Provide your 48 characters long [Clockify API Key](https://clockify.me/user/settings), which is required for the plugin to work
-- **Workspace Name:** *(required)* Write the name of the workspace you want to run/track timers in
-- **Project Name:** *(optional)* Provide the name of an existing project to run/track a timer for
-- **Task Name:** *(optional)* Set the name of the project specific task
-- **Timer Name:** *(optional)* Specify a name for the timer you want to run/track
-- **Server Url:** *(required)* Change from the *default* URL to the API URL of your own/company instance
+- **Basic**
+  - **Title:** Override the title being set by the plugin, leave empty otherwise
+  - **API Key:** *(required)* Provide your 48 characters long [Clockify API Key](https://clockify.me/user/settings), which is required for the plugin to work
+  - **Workspace Name:** *(required)* Write the name of the workspace you want to run/track timers in
+  - **Project Name:** *(optional)* Provide the name of an existing project to run/track a timer for
+  - **Task Name:** *(optional)* Set the name of the project specific task
+  - **Timer Name:** *(optional)* Specify a name for the timer you want to run/track
+- **Advanced**
+  - **Title Format:** *(optional)* Specify the format for the title to be displayed on the button.
+    - This can include any of:
+      - `{projectName}` : The project name
+      - `{taskName}` : The task name 
+      - `{timerName}` : The timer name 
+      - `{timer}` : The current timer value when running. Blank when not running
+  - **Server Url:** *(required)* Change from the *default* URL to the API URL of your own/company instance
 
 https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-8279-579840ce0a6b.mp4
 

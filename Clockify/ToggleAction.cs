@@ -46,7 +46,7 @@ namespace Clockify
 
             if (_clockifyContext.IsValid())
             {
-                await _clockifyContext.ToggleTimerAsync(_settings.WorkspaceName, _settings.ProjectName, _settings.TaskName, _settings.TimeName);
+                await _clockifyContext.ToggleTimerAsync(_settings.WorkspaceName, _settings.ProjectName, _settings.TaskName, _settings.TimerName);
             }
             else
             {
@@ -58,22 +58,21 @@ namespace Clockify
         {
             if (_clockifyContext.IsValid())
             {
-                var timer = await _clockifyContext.GetRunningTimerAsync(_settings.WorkspaceName, _settings.ProjectName, _settings.TimeName);
-                var timerText = CreateTimerText();
+                var timer = await _clockifyContext.GetRunningTimerAsync(_settings.WorkspaceName, _settings.ProjectName, _settings.TimerName);
+                var timerTime = string.Empty;
 
                 if (timer?.TimeInterval.Start != null)
                 {
                     var timeDifference = DateTime.UtcNow - timer.TimeInterval.Start.Value.UtcDateTime;
-                    var timerTime = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
-
-                    await Connection.SetTitleAsync($"{timerText}\n{timerTime}");
+                    timerTime = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
                     await Connection.SetStateAsync(ActiveState);
                 }
                 else
                 {
-                    await Connection.SetTitleAsync(timerText);
                     await Connection.SetStateAsync(InactiveState);
                 }
+                
+                await Connection.SetTitleAsync(CreateTimerText(timerTime));
             }
             else if (_settings.ApiKey.Length == 48)
             {
@@ -93,14 +92,33 @@ namespace Clockify
         {
         }
 
-        private string CreateTimerText()
+        private string CreateTimerText(string timerTime)
         {
-            if (string.IsNullOrEmpty(_settings.TimeName))
+            if (string.IsNullOrEmpty(_settings.TitleFormat))
             {
-                return string.IsNullOrEmpty(_settings.TaskName) ? $"{_settings.ProjectName}" : $"{_settings.ProjectName}:\n{_settings.TaskName}";
+                string timerText;
+                if (string.IsNullOrEmpty(_settings.TimerName))
+                {
+                    timerText = string.IsNullOrEmpty(_settings.TaskName) ? $"{_settings.ProjectName}" : $"{_settings.ProjectName}:\n{_settings.TaskName}";
+                }
+                else
+                {
+                    timerText = $"{_settings.TimerName}";
+                }
+
+                if (!string.IsNullOrEmpty(timerTime))
+                {
+                    timerText += $"\n{timerTime}";
+                }
+
+                return timerText;
             }
 
-            return $"{_settings.TimeName}";
+            return _settings.TitleFormat
+                .Replace("{projectName}", _settings.ProjectName)
+                .Replace("{taskName}", _settings.TaskName)
+                .Replace("{timerName}", _settings.TimerName)
+                .Replace("{timer}", timerTime);
         }
 
         private Task SaveSettings()
