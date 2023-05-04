@@ -24,4 +24,9 @@ public class PluginSettings
 
     [JsonProperty(PropertyName = "serverUrl")]
     public string ServerUrl { get; set; } = "https://api.clockify.me/api/v1";
+
+    public override string ToString()
+    {
+        return $"Workspace: {WorkspaceName}, Project: {ProjectName}, Task: {TaskName}, Timer: {TimerName}";
+    }
 }
