@@ -1,12 +1,11 @@
 ﻿using BarRaider.SdTools;
 
-namespace Clockify
+namespace Clockify;
+
+public static class Program
 {
-    public static class Program
+    public static void Main(string[] args)
     {
-        public static void Main(string[] args)
-        {
-            SDWrapper.Run(args);
-        }
+        SDWrapper.Run(args);
     }
 }

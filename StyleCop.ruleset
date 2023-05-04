@@ -2,6 +2,7 @@
 <RuleSet Name="Custom StyleCop Rule Set" Description="Use this rule set to get a comprehensive picture of all issues in your code. This can help you decide which of the more focused rule sets are most appropriate to run for your projects." ToolsVersion="15.0">
     <Rules AnalyzerId="StyleCop.Analyzers" RuleNamespace="StyleCop.Analyzers">
         <Rule Id="SA0001" Action="None" />
+        <Rule Id="SA1000" Action="None" />
         <Rule Id="SA1028" Action="None" />
         <Rule Id="SA1101" Action="None" />
         <Rule Id="SA1114" Action="None" />
@@ -15,7 +16,9 @@
         <Rule Id="SA1404" Action="None" />
         <Rule Id="SA1408" Action="None" />
         <Rule Id="SA1413" Action="None" />
+        <Rule Id="SA1503" Action="Error" />
         <Rule Id="SA1516" Action="None" />
+        <Rule Id="SA1519" Action="Error" />
         <Rule Id="SA1600" Action="None" />
         <Rule Id="SA1601" Action="None" />
         <Rule Id="SA1602" Action="None" />

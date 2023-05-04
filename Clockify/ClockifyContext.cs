@@ -10,271 +10,276 @@ using Clockify.Net.Models.TimeEntries;
 using Clockify.Net.Models.Users;
 using Clockify.Net.Models.Workspaces;
 
-namespace Clockify
+namespace Clockify;
+
+public class ClockifyContext
 {
-    public class ClockifyContext
+    private string _apiKey = string.Empty;
+    private ClockifyClient _clockifyClient;
+    private CurrentUserDto _currentUser = new();
+    private Dictionary<string, List<ProjectDtoImpl>> _projects = new();
+    private string _serverUrl = string.Empty;
+    private List<WorkspaceDto> _workspaces = new();
+
+    public bool IsValid()
     {
-        private string _apiKey = string.Empty;
-        private string _serverUrl = string.Empty;
-        private ClockifyClient _clockifyClient;
-        private CurrentUserDto _currentUser = new ();
-        private Dictionary<string, List<ProjectDtoImpl>> _projects = new ();
-        private List<WorkspaceDto> _workspaces = new ();
+        return _clockifyClient != null;
+    }
 
-        public bool IsValid()
+    public async Task ToggleTimerAsync(string workspaceName, string projectName = null, string taskName = null, string timerName = null)
+    {
+        if (_clockifyClient == null
+            || _workspaces.All(w => w.Name != workspaceName)
+            || (!string.IsNullOrEmpty(projectName) && (!_projects.ContainsKey(workspaceName) || _projects[workspaceName].All(p => p.Name != projectName))))
         {
-            return _clockifyClient != null;
+            Logger.Instance.LogMessage(TracingLevel.WARN,
+                $"Invalid settings for toggle {workspaceName}, {projectName}, {timerName}");
+            return;
         }
 
-        public async Task ToggleTimerAsync(string workspaceName, string projectName = null, string taskName = null, string timerName = null)
+        var runningTimer = await GetRunningTimerAsync(workspaceName, projectName, timerName);
+
+        if (runningTimer != null)
         {
-            if (_clockifyClient == null
-                || _workspaces.All(w => w.Name != workspaceName)
-                || !string.IsNullOrEmpty(projectName) && (!_projects.ContainsKey(workspaceName) || _projects[workspaceName].All(p => p.Name != projectName)))
-            {
-                Logger.Instance.LogMessage(TracingLevel.WARN, $"Invalid settings for toggle {workspaceName}, {projectName}, {timerName}");
-                return;
-            }
-
-            var runningTimer = await GetRunningTimerAsync(workspaceName, projectName, timerName);
-
-            if (runningTimer != null)
-            {
-                await StopRunningTimerAsync(workspaceName);
-                return;
-            }
-
             await StopRunningTimerAsync(workspaceName);
-
-            var workspace = _workspaces.Single(w => w.Name == workspaceName);
-            var timeEntryRequest = new TimeEntryRequest
-            {
-                UserId = _currentUser.Id,
-                WorkspaceId = workspace.Id,
-                Description = timerName ?? string.Empty,
-                Start = DateTimeOffset.UtcNow
-            };
-
-            if (!string.IsNullOrEmpty(projectName))
-            {
-                var project = _projects[workspaceName].Single(p => p.Name == projectName);
-                timeEntryRequest.ProjectId = project.Id;
-
-                if (!string.IsNullOrEmpty(taskName))
-                {
-                    var taskId = await FindOrCreateTaskAsync(workspace, project, taskName);
-                    if (taskId != null)
-                    {
-                        timeEntryRequest.TaskId = taskId;
-                    }
-                }
-            }
-
-            await _clockifyClient.CreateTimeEntryAsync(workspace.Id, timeEntryRequest);
-            Logger.Instance.LogMessage(TracingLevel.INFO, $"Toggle Timer {workspaceName}, {projectName}, {taskName}, {timerName}");
+            return;
         }
 
-        public async Task StopRunningTimerAsync(string workspaceName)
+        await StopRunningTimerAsync(workspaceName);
+
+        var workspace = _workspaces.Single(w => w.Name == workspaceName);
+        var timeEntryRequest = new TimeEntryRequest
         {
-            if (_clockifyClient == null || _workspaces.All(w => w.Name != workspaceName))
-            {
-                return;
-            }
+            UserId = _currentUser.Id,
+            WorkspaceId = workspace.Id,
+            Description = timerName ?? string.Empty,
+            Start = DateTimeOffset.UtcNow
+        };
 
-            var workspace = _workspaces.Single(w => w.Name == workspaceName);
-            var runningTimer = await GetRunningTimerAsync(workspaceName);
-            if (runningTimer == null)
-            {
-                return;
-            }
-
-            var timerUpdate = new UpdateTimeEntryRequest
-            {
-                Billable = runningTimer.Billable,
-                Start = runningTimer.TimeInterval.Start,
-                End = DateTimeOffset.UtcNow,
-                ProjectId = runningTimer.ProjectId,
-                TaskId = runningTimer.TaskId,
-                Description = runningTimer.Description
-            };
-
-            await _clockifyClient.UpdateTimeEntryAsync(workspace.Id, runningTimer.Id, timerUpdate);
-            Logger.Instance.LogMessage(TracingLevel.INFO, $"Timer Stopped {workspaceName}, {runningTimer.ProjectId}, {runningTimer.TaskId}, {runningTimer.Description}");
-        }
-
-        public async Task<TimeEntryDtoImpl> GetRunningTimerAsync(string workspaceName, string projectName = null, string timeName = null)
+        if (!string.IsNullOrEmpty(projectName))
         {
-            if (_clockifyClient == null
-                || _workspaces.All(w => w.Name != workspaceName)
-                || !string.IsNullOrEmpty(projectName) && (!_projects.ContainsKey(workspaceName) || _projects[workspaceName].All(p => p.Name != projectName)))
-            {
-                Logger.Instance.LogMessage(TracingLevel.WARN, $"Invalid settings for running timer {workspaceName}");
-                return null;
-            }
-
-            var workspace = _workspaces.Single(w => w.Name == workspaceName);
-            var timeEntries = await _clockifyClient.FindAllTimeEntriesForUserAsync(workspace.Id, _currentUser.Id, inProgress: true);
-            if (!timeEntries.IsSuccessful || timeEntries.Data == null)
-            {
-                return null;
-            }
-
-            if (string.IsNullOrEmpty(projectName))
-            {
-                return string.IsNullOrEmpty(timeName) ? timeEntries.Data.FirstOrDefault() : timeEntries.Data.FirstOrDefault(t => t.Description == timeName);
-            }
-
             var project = _projects[workspaceName].Single(p => p.Name == projectName);
-            return string.IsNullOrEmpty(timeName) ? timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id) : timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id && t.Description == timeName);
+            timeEntryRequest.ProjectId = project.Id;
+
+            if (!string.IsNullOrEmpty(taskName))
+            {
+                var taskId = await FindOrCreateTaskAsync(workspace, project, taskName);
+                if (taskId != null)
+                {
+                    timeEntryRequest.TaskId = taskId;
+                }
+            }
         }
 
-        public async Task<bool> SetApiKeyAsync(string serverUrl, string apiKey)
+        await _clockifyClient.CreateTimeEntryAsync(workspace.Id, timeEntryRequest);
+        Logger.Instance.LogMessage(TracingLevel.INFO, $"Toggle Timer {workspaceName}, {projectName}, {taskName}, {timerName}");
+    }
+
+    public async Task StopRunningTimerAsync(string workspaceName)
+    {
+        if (_clockifyClient == null || _workspaces.All(w => w.Name != workspaceName))
         {
-            if (_clockifyClient == null || apiKey != _apiKey || serverUrl != _serverUrl)
-            {
-                if (!Uri.IsWellFormedUriString(serverUrl, UriKind.Absolute))
-                {
-                    Logger.Instance.LogMessage(TracingLevel.WARN, "Server URL is invalid");
-                    return false;
-                }
-                
-                if (apiKey.Length != 48)
-                {
-                    Logger.Instance.LogMessage(TracingLevel.WARN, "Invalid API key format");
-                    return false;
-                }
+            return;
+        }
 
-                _serverUrl = serverUrl;
-                _apiKey = apiKey;
-                _clockifyClient = new ClockifyClient(_apiKey, serverUrl);
+        var workspace = _workspaces.Single(w => w.Name == workspaceName);
+        var runningTimer = await GetRunningTimerAsync(workspaceName);
+        if (runningTimer == null)
+        {
+            return;
+        }
+
+        var timerUpdate = new UpdateTimeEntryRequest
+        {
+            Billable = runningTimer.Billable,
+            Start = runningTimer.TimeInterval.Start,
+            End = DateTimeOffset.UtcNow,
+            ProjectId = runningTimer.ProjectId,
+            TaskId = runningTimer.TaskId,
+            Description = runningTimer.Description
+        };
+
+        await _clockifyClient.UpdateTimeEntryAsync(workspace.Id, runningTimer.Id, timerUpdate);
+        Logger.Instance.LogMessage(TracingLevel.INFO, $"Timer Stopped {workspaceName}, {runningTimer.ProjectId}, {runningTimer.TaskId}, {runningTimer.Description}");
+    }
+
+    public async Task<TimeEntryDtoImpl> GetRunningTimerAsync(string workspaceName, string projectName = null, string timeName = null)
+    {
+        if (_clockifyClient == null
+            || _workspaces.All(w => w.Name != workspaceName)
+            || (!string.IsNullOrEmpty(projectName) && (!_projects.ContainsKey(workspaceName) || _projects[workspaceName].All(p => p.Name != projectName))))
+        {
+            Logger.Instance.LogMessage(TracingLevel.WARN, $"Invalid settings for running timer {workspaceName}");
+            return null;
+        }
+
+        var workspace = _workspaces.Single(w => w.Name == workspaceName);
+        var timeEntries = await _clockifyClient.FindAllTimeEntriesForUserAsync(workspace.Id, _currentUser.Id, inProgress: true);
+        if (!timeEntries.IsSuccessful || timeEntries.Data == null)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(projectName))
+        {
+            return string.IsNullOrEmpty(timeName)
+                ? timeEntries.Data.FirstOrDefault()
+                : timeEntries.Data.FirstOrDefault(t => t.Description == timeName);
+        }
+
+        var project = _projects[workspaceName].Single(p => p.Name == projectName);
+        return string.IsNullOrEmpty(timeName)
+            ? timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id)
+            : timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id && t.Description == timeName);
+    }
+
+    public async Task<bool> SetApiKeyAsync(string serverUrl, string apiKey)
+    {
+        if (_clockifyClient == null || apiKey != _apiKey || serverUrl != _serverUrl)
+        {
+            if (!Uri.IsWellFormedUriString(serverUrl, UriKind.Absolute))
+            {
+                Logger.Instance.LogMessage(TracingLevel.WARN, "Server URL is invalid");
+                return false;
             }
 
-            if (await TestConnectionAsync())
+            if (apiKey.Length != 48)
             {
-                Logger.Instance.LogMessage(TracingLevel.INFO, "API key successfully set");
-
-                await UpdateWorkspacesAsync();
-                foreach (var workspace in _workspaces)
-                {
-                    await UpdateProjectsAsync(workspace.Name);
-                }
-
-                return true;
+                Logger.Instance.LogMessage(TracingLevel.WARN, "Invalid API key format");
+                return false;
             }
 
-            Logger.Instance.LogMessage(TracingLevel.WARN, "Invalid API key");
-            _clockifyClient = null;
-            _currentUser = new CurrentUserDto();
-            _workspaces = new List<WorkspaceDto>();
-            _projects = new Dictionary<string, List<ProjectDtoImpl>>();
+            _serverUrl = serverUrl;
+            _apiKey = apiKey;
+            _clockifyClient = new ClockifyClient(_apiKey, serverUrl);
+        }
+
+        if (await TestConnectionAsync())
+        {
+            Logger.Instance.LogMessage(TracingLevel.INFO, "API key successfully set");
+
+            await UpdateWorkspacesAsync();
+            foreach (var workspace in _workspaces)
+            {
+                await UpdateProjectsAsync(workspace.Name);
+            }
+
+            return true;
+        }
+
+        Logger.Instance.LogMessage(TracingLevel.WARN, "Invalid API key");
+        _clockifyClient = null;
+        _currentUser = new CurrentUserDto();
+        _workspaces = new List<WorkspaceDto>();
+        _projects = new Dictionary<string, List<ProjectDtoImpl>>();
+        return false;
+    }
+
+    public async Task<List<WorkspaceDto>> GetWorkspacesAsync()
+    {
+        if (!_workspaces.Any())
+        {
+            await UpdateWorkspacesAsync();
+        }
+
+        return _workspaces;
+    }
+
+    public async Task<List<ProjectDtoImpl>> GetProjectsAsync(string workspaceName)
+    {
+        if (!_projects.ContainsKey(workspaceName))
+        {
+            await UpdateProjectsAsync(workspaceName);
+        }
+
+        return _projects[workspaceName];
+    }
+
+    private async Task UpdateWorkspacesAsync()
+    {
+        if (_clockifyClient == null || _workspaces.Any())
+        {
+            return;
+        }
+
+        var workspaceResponse = await _clockifyClient.GetWorkspacesAsync();
+        if (workspaceResponse.IsSuccessful)
+        {
+            _workspaces = workspaceResponse.Data;
+        }
+    }
+
+    private async Task UpdateProjectsAsync(string workspaceName)
+    {
+        if (_clockifyClient == null || _projects.ContainsKey(workspaceName))
+        {
+            return;
+        }
+
+        if (_workspaces.All(w => w.Name != workspaceName))
+        {
+            await UpdateWorkspacesAsync();
+        }
+
+        var workspace = _workspaces.SingleOrDefault(w => w.Name == workspaceName);
+        if (workspace == null)
+        {
+            return;
+        }
+
+        var projectResponse = await _clockifyClient.FindAllProjectsOnWorkspaceAsync(workspace.Id, pageSize: 5000);
+        if (!projectResponse.IsSuccessful)
+        {
+            return;
+        }
+
+        _projects[workspace.Name] = projectResponse.Data;
+    }
+
+    private async Task<string> FindOrCreateTaskAsync(WorkspaceDto workspace, ProjectDtoImpl project, string taskName)
+    {
+        var taskResponse =
+            await _clockifyClient.FindAllTasksAsync(workspace.Id, project.Id, name: taskName, pageSize: 5000);
+
+        if (!taskResponse.IsSuccessful || taskResponse.Data == null)
+        {
+            return null;
+        }
+
+        if (taskResponse.Data.Any())
+        {
+            return taskResponse.Data.First().Id;
+        }
+
+        var taskRequest = new TaskRequest
+        {
+            Name = taskName
+        };
+
+        var creationResponse = await _clockifyClient.CreateTaskAsync(workspace.Id, project.Id, taskRequest);
+
+        if (!creationResponse.IsSuccessful || creationResponse.Data == null)
+        {
+            return null;
+        }
+
+        return creationResponse.Data.Id;
+    }
+
+    private async Task<bool> TestConnectionAsync()
+    {
+        if (_clockifyClient == null)
+        {
             return false;
         }
 
-        public async Task<List<WorkspaceDto>> GetWorkspacesAsync()
+        var user = await _clockifyClient.GetCurrentUserAsync();
+        if (!user.IsSuccessful)
         {
-            if (!_workspaces.Any())
-            {
-                await UpdateWorkspacesAsync();
-            }
-
-            return _workspaces;
+            return false;
         }
 
-        public async Task<List<ProjectDtoImpl>> GetProjectsAsync(string workspaceName)
-        {
-            if (!_projects.ContainsKey(workspaceName))
-            {
-                await UpdateProjectsAsync(workspaceName);
-            }
-
-            return _projects[workspaceName];
-        }
-
-        private async Task UpdateWorkspacesAsync()
-        {
-            if (_clockifyClient == null || _workspaces.Any())
-            {
-                return;
-            }
-
-            var workspaceResponse = await _clockifyClient.GetWorkspacesAsync();
-            if (workspaceResponse.IsSuccessful)
-            {
-                _workspaces = workspaceResponse.Data;
-            }
-        }
-
-        private async Task UpdateProjectsAsync(string workspaceName)
-        {
-            if (_clockifyClient == null || _projects.ContainsKey(workspaceName))
-            {
-                return;
-            }
-
-            if (_workspaces.All(w => w.Name != workspaceName))
-            {
-                await UpdateWorkspacesAsync();
-            }
-
-            var workspace = _workspaces.SingleOrDefault(w => w.Name == workspaceName);
-            if (workspace == null)
-            {
-                return;
-            }
-
-            var projectResponse = await _clockifyClient.FindAllProjectsOnWorkspaceAsync(workspace.Id, pageSize: 5000);
-            if (!projectResponse.IsSuccessful)
-            {
-                return;
-            }
-
-            _projects[workspace.Name] = projectResponse.Data;
-        }
-
-        private async Task<string> FindOrCreateTaskAsync(WorkspaceDto workspace, ProjectDtoImpl project, string taskName)
-        {
-            var taskResponse = await _clockifyClient.FindAllTasksAsync(workspace.Id, project.Id, name: taskName, pageSize: 5000);
-
-            if (!taskResponse.IsSuccessful || taskResponse.Data == null)
-            {
-                return null;
-            }
-
-            if (taskResponse.Data.Any())
-            {
-                return taskResponse.Data.First().Id;
-            }
-
-            var taskRequest = new TaskRequest
-            {
-                Name = taskName
-            };
-
-            var creationResponse = await _clockifyClient.CreateTaskAsync(workspace.Id, project.Id, taskRequest);
-
-            if (!creationResponse.IsSuccessful || creationResponse.Data == null)
-            {
-                return null;
-            }
-
-            return creationResponse.Data.Id;
-        }
-
-        private async Task<bool> TestConnectionAsync()
-        {
-            if (_clockifyClient == null)
-            {
-                return false;
-            }
-
-            var user = await _clockifyClient.GetCurrentUserAsync();
-            if (!user.IsSuccessful)
-            {
-                return false;
-            }
-
-            _currentUser = user.Data;
-            return true;
-        }
+        _currentUser = user.Data;
+        return true;
     }
 }
