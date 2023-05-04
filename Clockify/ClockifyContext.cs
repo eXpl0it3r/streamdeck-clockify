@@ -14,12 +14,18 @@ namespace Clockify;
 
 public class ClockifyContext
 {
+    private readonly Logger _logger;
     private string _apiKey = string.Empty;
     private ClockifyClient _clockifyClient;
     private CurrentUserDto _currentUser = new();
     private Dictionary<string, List<ProjectDtoImpl>> _projects = new();
     private string _serverUrl = string.Empty;
     private List<WorkspaceDto> _workspaces = new();
+
+    public ClockifyContext(Logger logger)
+    {
+        _logger = logger;
+    }
 
     public bool IsValid()
     {
@@ -32,8 +38,7 @@ public class ClockifyContext
             || _workspaces.All(w => w.Name != workspaceName)
             || (!string.IsNullOrEmpty(projectName) && (!_projects.ContainsKey(workspaceName) || _projects[workspaceName].All(p => p.Name != projectName))))
         {
-            Logger.Instance.LogMessage(TracingLevel.WARN,
-                $"Invalid settings for toggle {workspaceName}, {projectName}, {timerName}");
+            _logger.LogWarn($"Invalid settings for toggle {workspaceName}, {projectName}, {timerName}");
             return;
         }
 
@@ -72,7 +77,7 @@ public class ClockifyContext
         }
 
         await _clockifyClient.CreateTimeEntryAsync(workspace.Id, timeEntryRequest);
-        Logger.Instance.LogMessage(TracingLevel.INFO, $"Toggle Timer {workspaceName}, {projectName}, {taskName}, {timerName}");
+        _logger.LogInfo($"Toggle Timer {workspaceName}, {projectName}, {taskName}, {timerName}");
     }
 
     public async Task StopRunningTimerAsync(string workspaceName)
@@ -100,7 +105,7 @@ public class ClockifyContext
         };
 
         await _clockifyClient.UpdateTimeEntryAsync(workspace.Id, runningTimer.Id, timerUpdate);
-        Logger.Instance.LogMessage(TracingLevel.INFO, $"Timer Stopped {workspaceName}, {runningTimer.ProjectId}, {runningTimer.TaskId}, {runningTimer.Description}");
+        _logger.LogInfo($"Timer Stopped {workspaceName}, {runningTimer.ProjectId}, {runningTimer.TaskId}, {runningTimer.Description}");
     }
 
     public async Task<TimeEntryDtoImpl> GetRunningTimerAsync(string workspaceName, string projectName = null, string timeName = null)
@@ -109,7 +114,7 @@ public class ClockifyContext
             || _workspaces.All(w => w.Name != workspaceName)
             || (!string.IsNullOrEmpty(projectName) && (!_projects.ContainsKey(workspaceName) || _projects[workspaceName].All(p => p.Name != projectName))))
         {
-            Logger.Instance.LogMessage(TracingLevel.WARN, $"Invalid settings for running timer {workspaceName}");
+            _logger.LogWarn($"Invalid settings for running timer {workspaceName}");
             return null;
         }
 
@@ -139,13 +144,13 @@ public class ClockifyContext
         {
             if (!Uri.IsWellFormedUriString(serverUrl, UriKind.Absolute))
             {
-                Logger.Instance.LogMessage(TracingLevel.WARN, "Server URL is invalid");
+                _logger.LogWarn("Server URL is invalid");
                 return false;
             }
 
             if (apiKey.Length != 48)
             {
-                Logger.Instance.LogMessage(TracingLevel.WARN, "Invalid API key format");
+                _logger.LogWarn("Invalid API key format");
                 return false;
             }
 
@@ -156,7 +161,7 @@ public class ClockifyContext
 
         if (await TestConnectionAsync())
         {
-            Logger.Instance.LogMessage(TracingLevel.INFO, "API key successfully set");
+            _logger.LogInfo("API key successfully set");
 
             await UpdateWorkspacesAsync();
             foreach (var workspace in _workspaces)
@@ -167,7 +172,7 @@ public class ClockifyContext
             return true;
         }
 
-        Logger.Instance.LogMessage(TracingLevel.WARN, "Invalid API key");
+        _logger.LogWarn("Invalid API key");
         _clockifyClient = null;
         _currentUser = new CurrentUserDto();
         _workspaces = new List<WorkspaceDto>();

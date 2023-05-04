@@ -11,12 +11,15 @@ public class ToggleAction : KeypadBase
     private const uint InactiveState = 0;
     private const uint ActiveState = 1;
 
-    private readonly ClockifyContext _clockifyContext;
+    private readonly Logger _logger;
     private readonly PluginSettings _settings;
+    private readonly ClockifyContext _clockifyContext;
 
     public ToggleAction(ISDConnection connection, InitialPayload payload)
         : base(connection, payload)
     {
+        _logger = new Logger(BarRaider.SdTools.Logger.Instance);
+        
         if (payload.Settings == null || payload.Settings.Count == 0)
         {
             _settings = new PluginSettings();
@@ -27,22 +30,22 @@ public class ToggleAction : KeypadBase
             _settings = payload.Settings.ToObject<PluginSettings>();
         }
 
-        _clockifyContext = new ClockifyContext();
+        _clockifyContext = new ClockifyContext(_logger);
     }
 
     public override void Dispose()
     {
-        Logger.Instance.LogMessage(TracingLevel.INFO, "Destructor called");
+        _logger.LogInfo("Destructor called");
     }
 
     public override void KeyPressed(KeyPayload payload)
     {
-        Logger.Instance.LogMessage(TracingLevel.INFO, "Key Pressed");
+        _logger.LogInfo("Key Pressed");
     }
 
     public override async void KeyReleased(KeyPayload payload)
     {
-        Logger.Instance.LogMessage(TracingLevel.INFO, "Key Released");
+        _logger.LogInfo("Key Released");
 
         if (_clockifyContext.IsValid())
         {
@@ -83,7 +86,7 @@ public class ToggleAction : KeypadBase
     public override async void ReceivedSettings(ReceivedSettingsPayload payload)
     {
         Tools.AutoPopulateSettings(_settings, payload.Settings);
-        Logger.Instance.LogMessage(TracingLevel.INFO, $"Settings Received: {_settings}");
+        _logger.LogInfo($"Settings Received: {_settings}");
         await SaveSettings();
         await _clockifyContext.SetApiKeyAsync(_settings.ServerUrl, _settings.ApiKey);
     }
