@@ -33,9 +33,9 @@ jobs:
       - name: Install Dependencies
         run: dotnet restore
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build --configuration Debug --no-restore
       - name: Publish
-        run: dotnet publish --runtime ${{ matrix.platform.rid }} --self-contained --configuration Release -p:PublishReadyToRun=true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:IncludeNativeLibrariesForSelfExtract=true
+        run: dotnet publish --runtime ${{ matrix.platform.rid }} --self-contained --configuration Debug -p:PublishReadyToRun=true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:IncludeNativeLibrariesForSelfExtract=true
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:

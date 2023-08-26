@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Clockify.Net;
 using Clockify.Net.Models.Projects;
@@ -12,6 +13,8 @@ namespace Clockify;
 public class ClockifyContext
 {
     private readonly Logger _logger;
+
+    private static Mutex _clientAccess = new Mutex();
 
     private ClockifyClient _clockifyClient;
     private CurrentUserDto _currentUser = new();
@@ -51,11 +54,15 @@ public class ClockifyContext
         {
             return;
         }
-        
+
+        _clientAccess.WaitOne(1000);
         var workspaces = await _clockifyClient.GetWorkspacesAsync();
+        _clientAccess.ReleaseMutex();        
+        
         if (!workspaces.IsSuccessful || workspaces.Data is null)
         {
-            _logger.LogWarn("Unable to retrieve available workspaces");
+            _logger.LogWarn($"Unable to retrieve available workspaces: {workspaces.ErrorMessage}");
+            _logger.LogWarn($"TT: {_apiKey} / {_serverUrl} / {_workspaceName} / {_clientName} / {_projectName} /  {_taskName} / {_timerName} / {_currentUser?.Id}");
             return;
         }
 
@@ -102,10 +109,14 @@ public class ClockifyContext
             return null;
         }
 
+        _clientAccess.WaitOne(1000);
         var workspaces = await _clockifyClient.GetWorkspacesAsync();
+        _clientAccess.ReleaseMutex();
+        
         if (!workspaces.IsSuccessful || workspaces.Data is null)
         {
-            _logger.LogWarn("Unable to retrieve available workspaces");
+            _logger.LogWarn($"Unable to retrieve available workspaces: {workspaces.ErrorMessage}");
+            _logger.LogWarn($"GRT: {_apiKey} / {_serverUrl} / {_workspaceName} / {_clientName} / {_projectName} /  {_taskName} / {_timerName} / {_currentUser?.Id}");
             return null;
         }
 
@@ -180,11 +191,15 @@ public class ClockifyContext
         {
             return;
         }
-
+        
+        _clientAccess.WaitOne(1000);
         var workspaces = await _clockifyClient.GetWorkspacesAsync();
+        _clientAccess.ReleaseMutex();
+        
         if (!workspaces.IsSuccessful || workspaces.Data is null)
         {
-            _logger.LogWarn("Unable to retrieve available workspaces");
+            _logger.LogWarn($"Unable to retrieve available workspaces: {workspaces.ErrorMessage}");
+            _logger.LogWarn($"SRT: {_apiKey} / {_serverUrl} / {_workspaceName} / {_clientName} / {_projectName} /  {_taskName} / {_timerName} / {_currentUser?.Id}");
             return;
         }
 
@@ -214,7 +229,7 @@ public class ClockifyContext
         var projects = await _clockifyClient.FindAllProjectsOnWorkspaceAsync(workspaceId, false, _projectName, pageSize: 5000);
         if (!projects.IsSuccessful || projects.Data is null)
         {
-            _logger.LogWarn($"Unable to retrieve project {_projectName} on workspace {_workspaceName}");
+            _logger.LogWarn($"Unable to retrieve project {_projectName} on workspace {_workspaceName}: {projects.ErrorMessage}");
             return null;
         }
 
