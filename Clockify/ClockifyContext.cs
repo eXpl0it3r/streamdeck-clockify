@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Clockify.Net;
 using Clockify.Net.Models.Projects;
+using Clockify.Net.Models.Reports;
 using Clockify.Net.Models.Tasks;
 using Clockify.Net.Models.TimeEntries;
 using Clockify.Net.Models.Users;
@@ -15,7 +16,7 @@ public class ClockifyContext
 
     private ClockifyClient _clockifyClient;
     private CurrentUserDto _currentUser = new();
-    
+
     private string _apiKey = string.Empty;
     private string _clientName = string.Empty;
     private string _projectName = string.Empty;
@@ -51,7 +52,7 @@ public class ClockifyContext
         {
             return;
         }
-        
+
         var workspaces = await _clockifyClient.GetWorkspacesAsync();
         if (!workspaces.IsSuccessful || workspaces.Data is null)
         {
@@ -133,6 +134,54 @@ public class ClockifyContext
         return string.IsNullOrEmpty(_timerName)
             ? timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id)
             : timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id && t.Description == _timerName);
+    }
+
+    public async Task<int?> GetCurrentWeekTotalTimeAsync()
+    {
+        if (_clockifyClient is null || string.IsNullOrWhiteSpace(_workspaceName))
+        {
+            _logger.LogWarn($"Invalid settings for {_workspaceName}");
+            return null;
+        }
+
+        var workspaces = await _clockifyClient.GetWorkspacesAsync();
+        if (!workspaces.IsSuccessful || workspaces.Data is null)
+        {
+            _logger.LogWarn("Unable to retrieve available workspaces");
+            return null;
+        }
+
+        var now = DateTimeOffset.Now;
+
+        var startOfWeek = now.AddDays(DayOfWeek.Monday - now.DayOfWeek);
+        startOfWeek = startOfWeek.AddHours(-startOfWeek.Hour).AddMinutes(-startOfWeek.Minute).AddSeconds(-startOfWeek.Second).AddMilliseconds(-startOfWeek.Millisecond);
+
+        var endOfWeek = startOfWeek.AddDays(6).AddHours(23).AddMinutes(59).AddSeconds(59).AddMilliseconds(999);
+
+        var workspace = workspaces.Data.Single(w => w.Name == _workspaceName);
+        var weeklyReport = await _clockifyClient.GetWeeklyReportAsync(workspace.Id, new WeeklyReportRequest()
+        {
+            DateRangeStart = startOfWeek,
+            DateRangeEnd = endOfWeek,
+            AmountShown = AmountShownType.HIDE_AMOUNT,
+            Description = string.Empty,
+            WithoutDescription = false,
+            Rounding = false,
+            SortOrder = SortOrderType.ASCENDING,
+            WeeklyFilter = new WeeklyFilterDto()
+            {
+                Group = WeeklyGroupType.PROJECT,
+                Subgroup = WeeklySubgroupType.TIME
+            },
+        });
+        if (!weeklyReport.IsSuccessful || weeklyReport.Data is null)
+        {
+            return null;
+        }
+
+        var totalSeconds = weeklyReport.Data.Totals.Single().TotalTime;
+
+        return totalSeconds;
     }
 
     public async Task UpdateSettings(PluginSettings settings)
@@ -219,8 +268,8 @@ public class ClockifyContext
         }
 
         var project = projects.Data
-                              .Where(p => p.Name == _projectName && (string.IsNullOrWhiteSpace(_clientName) || p.ClientName == _clientName))
-                              .ToList();
+            .Where(p => p.Name == _projectName && (string.IsNullOrWhiteSpace(_clientName) || p.ClientName == _clientName))
+            .ToList();
 
         if (project.Count > 1)
         {

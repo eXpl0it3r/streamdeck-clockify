@@ -1,7 +1,7 @@
 Param(
     [string]$target = "Debug",
-    [string]$distributionTool = "C:/tools/DistributionTool.exe",
-    [string]$outputDir = "C:/temp"
+    [string]$distributionTool = "C:/Perso/streamdeck-clockify/DistributionTool.exe",
+    [string]$outputDir = "C:/Perso/streamdeck-clockify/temp"
 )
 
 Push-Location -Path "bin/$target/"

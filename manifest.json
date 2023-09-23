@@ -29,8 +29,7 @@
   "Icon": "Images/clockifyIcon",
   "URL": "https://duerrenberger.dev",
   "Version": "1.6",
-  "CodePathWin": "Windows/dev.duerrenberger.clockify.exe",
-  "CodePathMac": "macOS/dev.duerrenberger.clockify",
+  "CodePath": "dev.duerrenberger.clockify.exe",
   "Category": "Time Tracking",
   "CategoryIcon": "Images/categoryTimerIcon",
   "OS": [

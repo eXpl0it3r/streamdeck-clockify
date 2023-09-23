@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using BarRaider.SdTools;
 
 namespace Clockify;
@@ -39,6 +40,11 @@ public class ToggleAction : KeypadBase
     {
         _logger.LogDebug("Key Released");
 
+        if (_settings.ShowWeekTime)
+        {
+            return;
+        }
+
         if (_clockifyContext.IsValid())
         {
             await _clockifyContext.ToggleTimerAsync();
@@ -57,6 +63,12 @@ public class ToggleAction : KeypadBase
             return;
         }
 
+        if (_settings.ShowWeekTime)
+        {
+            await ReturnWeekTime();
+            return;
+        }
+
         var timer = await _clockifyContext.GetRunningTimerAsync();
         var timerTime = string.Empty;
 
@@ -72,6 +84,21 @@ public class ToggleAction : KeypadBase
         }
 
         await Connection.SetTitleAsync(CreateTimerText(timerTime));
+    }
+
+    private async Task ReturnWeekTime()
+    {
+        var totalTimeInSeconds = await _clockifyContext.GetCurrentWeekTotalTimeAsync();
+        var hours = totalTimeInSeconds / 3600;
+        var minutes = (totalTimeInSeconds % 3600) / 60;
+        var seconds = totalTimeInSeconds % 60;
+
+        var formattedTime = string.Format("{0:D2}:{1:D2}:{2:D2}", hours, minutes, seconds);
+
+        await Connection.SetStateAsync(ActiveState);
+        await Connection.SetTitleAsync(CreateTimerText(formattedTime));
+
+        return;
     }
 
     public override async void ReceivedSettings(ReceivedSettingsPayload payload)
