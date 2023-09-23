@@ -17,6 +17,7 @@ Until the plugin is available in the [Stream Deck Store](https://apps.elgato.com
   - **Project Name:** *(optional)* Provide the name of an existing project to run/track a timer for
   - **Task Name:** *(optional)* Set the name of the project specific task
   - **Timer Name:** *(optional)* Specify a name for the timer you want to run/track
+  - **Show week time:** *(optional)* False by default. If true, the timer value will be the total week time, and clicking on it will do nothing.
 - **Advanced**
   - **Title Format:** *(optional)* Specify the format for the title to be displayed on the button.
     - This can include any of:
@@ -34,14 +35,10 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
   - Your API Key is likely incorrect
 - Why am I not seeing the running timer on my button?
   - Make sure you haven't set a title, as this will override any other content
-  - Make sure the API Key, Workspace name and optional the project and timer name 
+  - Make sure the API Key, Workspace name and optional the project and timer name
 - Why does the timer always start with a negative number?
   - This can happen when your local computer time isn't in sync with the Clockify server time
   - Make sure you synchronize your clock with a time server
-- Why can't I select my Workspace and Project in a dropdown menu?
-  - Because I was lazy 😅
-- IT DOESN'T WORK, WHY?!?
-  - Feel free to open a [GitHub issue](https://github.com/eXpl0it3r/streamdeck-clockify/issues) or ping me on [Twitter](https://twitter.com/DarkCisum)
 
 ## Credits
 
