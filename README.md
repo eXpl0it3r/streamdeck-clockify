@@ -4,9 +4,16 @@
 
 This plugin allows you to track, start and stop Clockify timers on your [Elgato Stream Deck](https://www.elgato.com/en/stream-deck).
 
+## Fork new features
+
+I added 3 features :
+- **Refresh rate** : Every 10 seconds instead of every second. I don't like poking an API each second. It's using a cache value to increment the second timer between each updates
+- **Total week time** : I wanted to have the total week logged time, so here it is.
+- **Total day time** : I wanted to have the current day logged time, so here it is.
+
 ## Download
 
-Until the plugin is available in the [Stream Deck Store](https://apps.elgato.com/plugins), you can download a copy from the [GitHub release pages](https://github.com/eXpl0it3r/streamdeck-clockify/releases/latest).
+You can download a copy from the [GitHub release pages](https://github.com/sponsCA/streamdeck-clockify/releases/latest).
 
 ## Setup
 
@@ -17,7 +24,8 @@ Until the plugin is available in the [Stream Deck Store](https://apps.elgato.com
   - **Project Name:** *(optional)* Provide the name of an existing project to run/track a timer for
   - **Task Name:** *(optional)* Set the name of the project specific task
   - **Timer Name:** *(optional)* Specify a name for the timer you want to run/track
-  - **Show week time:** *(optional)* False by default. If true, the timer value will be the total week time, and clicking on it will do nothing.
+  - **Show week time:** *(optional)* False by default. If true, the timer value will be the total week time, and clicking on it will update it.
+  - **Show current day time:** *(optional)* False by default. If true, the timer value will be the current day time, and clicking on it will update.
 - **Advanced**
   - **Title Format:** *(optional)* Specify the format for the title to be displayed on the button.
     - This can include any of:
