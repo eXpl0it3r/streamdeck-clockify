@@ -93,12 +93,10 @@ public class ToggleAction : KeypadBase
         var minutes = (totalTimeInSeconds % 3600) / 60;
         var seconds = totalTimeInSeconds % 60;
 
-        var formattedTime = string.Format("{0:D2}:{1:D2}:{2:D2}", hours, minutes, seconds);
+        var formattedTime = $"{hours:D2}:{minutes:D2}:{seconds:D2}";
 
         await Connection.SetStateAsync(ActiveState);
         await Connection.SetTitleAsync(CreateTimerText(formattedTime));
-
-        return;
     }
 
     public override async void ReceivedSettings(ReceivedSettingsPayload payload)

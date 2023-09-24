@@ -152,8 +152,21 @@ public class ClockifyContext
         }
 
         var now = DateTimeOffset.Now;
+        var dayOfWeek = now.DayOfWeek;
 
-        var startOfWeek = now.AddDays(DayOfWeek.Monday - now.DayOfWeek);
+        var daysToSubtract = dayOfWeek switch
+        {
+            DayOfWeek.Monday => 0,
+            DayOfWeek.Tuesday => 1,
+            DayOfWeek.Wednesday => 2,
+            DayOfWeek.Thursday => 3,
+            DayOfWeek.Friday => 4,
+            DayOfWeek.Saturday => 5,
+            DayOfWeek.Sunday => 6,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+
+        var startOfWeek = now.AddDays(-daysToSubtract);
         startOfWeek = startOfWeek.AddHours(-startOfWeek.Hour).AddMinutes(-startOfWeek.Minute).AddSeconds(-startOfWeek.Second).AddMilliseconds(-startOfWeek.Millisecond);
 
         var endOfWeek = startOfWeek.AddDays(6).AddHours(23).AddMinutes(59).AddSeconds(59).AddMilliseconds(999);
