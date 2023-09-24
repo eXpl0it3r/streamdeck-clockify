@@ -31,7 +31,6 @@ public class Logger
         _logger.LogMessage(TracingLevel.ERROR, message);
     }
 
-
     public void LogFatal(string message)
     {
         _logger.LogMessage(TracingLevel.FATAL, message);

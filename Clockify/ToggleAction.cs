@@ -27,7 +27,7 @@ public class ToggleAction : KeypadBase
 
         Tools.AutoPopulateSettings(_settings, payload.Settings);
 
-        UpdateValues().Wait();
+        UpdateValuesFromApi().Wait();
 
         _logger.LogDebug("Creating ToggleAction...");
     }
@@ -50,20 +50,20 @@ public class ToggleAction : KeypadBase
 
         if (_settings.ShowWeekTime)
         {
-            await ReturnWeekTime();
+            await UpdateWeekTimeFromApi();
             return;
         }
 
         if (_settings.ShowDayTime)
         {
-            await ReturnDayTime();
+            await UpdateDayTimeFromApi();
             return;
         }
 
         if (_clockifyContext.IsValid())
         {
             await _clockifyContext.ToggleTimerAsync();
-            await ReturnTimer();
+            await UpdateRunningTimerFromApi();
         }
         else
         {
@@ -76,72 +76,16 @@ public class ToggleAction : KeypadBase
         if (_tickCount < 10)
         {
             _tickCount++;
-            await Connection.SetTitleAsync(CreateTimerText(null, true, !_settings.ShowDayTime && !_settings.ShowWeekTime));
+            await Connection.SetTitleAsync(GetTimerText(null, true, !_settings.ShowDayTime && !_settings.ShowWeekTime));
             return;
         }
 
         _cachedTimeSpan = null;
         _tickCount = 0;
 
-        await UpdateValues();
+        await UpdateValuesFromApi();
 
         _tickCount++;
-    }
-
-    private async Task UpdateValues()
-    {
-        if (!_clockifyContext.IsValid())
-        {
-            await _clockifyContext.UpdateSettings(_settings);
-            return;
-        }
-
-        if (_settings.ShowWeekTime)
-        {
-            await ReturnWeekTime();
-            return;
-        }
-
-        if (_settings.ShowDayTime)
-        {
-            await ReturnDayTime();
-            return;
-        }
-
-        await ReturnTimer();
-    }
-
-    private async Task ReturnTimer()
-    {
-        var timer = await _clockifyContext.GetRunningTimerAsync();
-        TimeSpan? timeDifference = null;
-        if (timer?.TimeInterval.Start != null)
-        {
-            timeDifference = DateTime.UtcNow - timer.TimeInterval.Start.Value.UtcDateTime;
-            await Connection.SetStateAsync(ActiveState);
-        }
-        else
-        {
-            await Connection.SetStateAsync(InactiveState);
-        }
-
-        await Connection.SetTitleAsync(CreateTimerText(timeDifference));
-    }
-
-    private async Task ReturnWeekTime()
-    {
-        var totalTimeInSeconds = await _clockifyContext.GetCurrentWeekTotalTimeAsync();
-
-        await Connection.SetStateAsync(ActiveState);
-        await Connection.SetTitleAsync(CreateTimerText(TimeSpan.FromSeconds(totalTimeInSeconds!.Value)));
-    }
-
-    private async Task ReturnDayTime()
-    {
-        var totalTimeInSeconds = await _clockifyContext.GetCurrentDayTimeAsync();
-
-        await Connection.SetStateAsync(ActiveState);
-        await Connection.SetTitleAsync(CreateTimerText(TimeSpan.FromSeconds(totalTimeInSeconds!.Value)));
     }
 
     public override async void ReceivedSettings(ReceivedSettingsPayload payload)
@@ -156,7 +100,63 @@ public class ToggleAction : KeypadBase
         _logger.LogDebug("Global Settings Received");
     }
 
-    private string CreateTimerText(TimeSpan? timeSpan, bool useCachedValue = false, bool runningTimer = false)
+    private async Task UpdateValuesFromApi()
+    {
+        if (!_clockifyContext.IsValid())
+        {
+            await _clockifyContext.UpdateSettings(_settings);
+            return;
+        }
+
+        if (_settings.ShowWeekTime)
+        {
+            await UpdateWeekTimeFromApi();
+            return;
+        }
+
+        if (_settings.ShowDayTime)
+        {
+            await UpdateDayTimeFromApi();
+            return;
+        }
+
+        await UpdateRunningTimerFromApi();
+    }
+
+    private async Task UpdateRunningTimerFromApi()
+    {
+        var timer = await _clockifyContext.GetRunningTimerAsync();
+        TimeSpan? timeDifference = null;
+        if (timer?.TimeInterval.Start != null)
+        {
+            timeDifference = DateTime.UtcNow - timer.TimeInterval.Start.Value.UtcDateTime;
+            await Connection.SetStateAsync(ActiveState);
+        }
+        else
+        {
+            await Connection.SetStateAsync(InactiveState);
+        }
+
+        await Connection.SetTitleAsync(GetTimerText(timeDifference));
+    }
+
+    private async Task UpdateWeekTimeFromApi()
+    {
+        var totalTimeInSeconds = await _clockifyContext.GetCurrentWeekTotalTimeAsync();
+
+        await Connection.SetStateAsync(ActiveState);
+        await Connection.SetTitleAsync(GetTimerText(TimeSpan.FromSeconds(totalTimeInSeconds!.Value)));
+    }
+
+    private async Task UpdateDayTimeFromApi()
+    {
+        var totalTimeInSeconds = await _clockifyContext.GetCurrentDayTimeAsync();
+
+        await Connection.SetStateAsync(ActiveState);
+        await Connection.SetTitleAsync(GetTimerText(TimeSpan.FromSeconds(totalTimeInSeconds!.Value)));
+    }
+
+    private string GetTimerText(TimeSpan? timeSpan, bool useCachedValue = false, bool runningTimer = false)
     {
         if (timeSpan != null)
         {
