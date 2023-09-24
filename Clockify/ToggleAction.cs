@@ -14,6 +14,10 @@ public class ToggleAction : KeypadBase
     private readonly Logger _logger;
     private readonly PluginSettings _settings;
 
+    // SDK does not allow us to set the tick interval, this is a workaround to only poke the API every 10 ticks (seconds)
+    private int _tickCount = 10;
+    private TimeSpan? _cachedTimeSpan;
+
     public ToggleAction(ISDConnection connection, InitialPayload payload)
         : base(connection, payload)
     {
@@ -22,6 +26,8 @@ public class ToggleAction : KeypadBase
         _settings = new PluginSettings();
 
         Tools.AutoPopulateSettings(_settings, payload.Settings);
+
+        UpdateValues().Wait();
 
         _logger.LogDebug("Creating ToggleAction...");
     }
@@ -40,14 +46,24 @@ public class ToggleAction : KeypadBase
     {
         _logger.LogDebug("Key Released");
 
+        _cachedTimeSpan = null;
+
         if (_settings.ShowWeekTime)
         {
+            await ReturnWeekTime();
+            return;
+        }
+
+        if (_settings.ShowDayTime)
+        {
+            await ReturnDayTime();
             return;
         }
 
         if (_clockifyContext.IsValid())
         {
             await _clockifyContext.ToggleTimerAsync();
+            await ReturnTimer();
         }
         else
         {
@@ -56,6 +72,23 @@ public class ToggleAction : KeypadBase
     }
 
     public override async void OnTick()
+    {
+        if (_tickCount < 10)
+        {
+            _tickCount++;
+            await Connection.SetTitleAsync(CreateTimerText(null, true, !_settings.ShowDayTime && !_settings.ShowWeekTime));
+            return;
+        }
+
+        _cachedTimeSpan = null;
+        _tickCount = 0;
+
+        await UpdateValues();
+
+        _tickCount++;
+    }
+
+    private async Task UpdateValues()
     {
         if (!_clockifyContext.IsValid())
         {
@@ -75,13 +108,16 @@ public class ToggleAction : KeypadBase
             return;
         }
 
-        var timer = await _clockifyContext.GetRunningTimerAsync();
-        var timerTime = string.Empty;
+        await ReturnTimer();
+    }
 
+    private async Task ReturnTimer()
+    {
+        var timer = await _clockifyContext.GetRunningTimerAsync();
+        TimeSpan? timeDifference = null;
         if (timer?.TimeInterval.Start != null)
         {
-            var timeDifference = DateTime.UtcNow - timer.TimeInterval.Start.Value.UtcDateTime;
-            timerTime = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
+            timeDifference = DateTime.UtcNow - timer.TimeInterval.Start.Value.UtcDateTime;
             await Connection.SetStateAsync(ActiveState);
         }
         else
@@ -89,33 +125,23 @@ public class ToggleAction : KeypadBase
             await Connection.SetStateAsync(InactiveState);
         }
 
-        await Connection.SetTitleAsync(CreateTimerText(timerTime));
+        await Connection.SetTitleAsync(CreateTimerText(timeDifference));
     }
 
     private async Task ReturnWeekTime()
     {
         var totalTimeInSeconds = await _clockifyContext.GetCurrentWeekTotalTimeAsync();
-        var hours = totalTimeInSeconds / 3600;
-        var minutes = (totalTimeInSeconds % 3600) / 60;
-        var seconds = totalTimeInSeconds % 60;
-
-        var formattedTime = $"{hours:D2}:{minutes:D2}:{seconds:D2}";
 
         await Connection.SetStateAsync(ActiveState);
-        await Connection.SetTitleAsync(CreateTimerText(formattedTime));
+        await Connection.SetTitleAsync(CreateTimerText(TimeSpan.FromSeconds(totalTimeInSeconds!.Value)));
     }
 
     private async Task ReturnDayTime()
     {
         var totalTimeInSeconds = await _clockifyContext.GetCurrentDayTimeAsync();
-        var hours = totalTimeInSeconds / 3600;
-        var minutes = (totalTimeInSeconds % 3600) / 60;
-        var seconds = totalTimeInSeconds % 60;
-
-        var formattedTime = $"{hours:D2}:{minutes:D2}:{seconds:D2}";
 
         await Connection.SetStateAsync(ActiveState);
-        await Connection.SetTitleAsync(CreateTimerText(formattedTime));
+        await Connection.SetTitleAsync(CreateTimerText(TimeSpan.FromSeconds(totalTimeInSeconds!.Value)));
     }
 
     public override async void ReceivedSettings(ReceivedSettingsPayload payload)
@@ -130,15 +156,37 @@ public class ToggleAction : KeypadBase
         _logger.LogDebug("Global Settings Received");
     }
 
-    private string CreateTimerText(string timerTime)
+    private string CreateTimerText(TimeSpan? timeSpan, bool useCachedValue = false, bool runningTimer = false)
     {
+        if (timeSpan != null)
+        {
+            _cachedTimeSpan = timeSpan.Value;
+        }
+
+        var timerTime = string.Empty;
+        if (_cachedTimeSpan.HasValue)
+        {
+            if (useCachedValue && runningTimer)
+            {
+                _cachedTimeSpan = _cachedTimeSpan.Value.Add(TimeSpan.FromSeconds(1));
+            }
+
+            var totalTimeInSeconds = (int)_cachedTimeSpan.Value.TotalSeconds;
+
+            var hours = totalTimeInSeconds / 3600;
+            var minutes = (totalTimeInSeconds % 3600) / 60;
+            var seconds = totalTimeInSeconds % 60;
+
+            timerTime = $"{hours:D2}:{minutes:D2}:{seconds:D2}";
+        }
+
         if (!string.IsNullOrEmpty(_settings.TitleFormat))
         {
             return _settings.TitleFormat
-                            .Replace("{projectName}", _settings.ProjectName)
-                            .Replace("{taskName}", _settings.TaskName)
-                            .Replace("{timerName}", _settings.TimerName)
-                            .Replace("{timer}", timerTime);
+                .Replace("{projectName}", _settings.ProjectName)
+                .Replace("{taskName}", _settings.TaskName)
+                .Replace("{timerName}", _settings.TimerName)
+                .Replace("{timer}", timerTime);
         }
 
         string timerText;
