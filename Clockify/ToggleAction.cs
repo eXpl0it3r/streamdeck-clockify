@@ -69,6 +69,12 @@ public class ToggleAction : KeypadBase
             return;
         }
 
+        if (_settings.ShowDayTime)
+        {
+            await ReturnDayTime();
+            return;
+        }
+
         var timer = await _clockifyContext.GetRunningTimerAsync();
         var timerTime = string.Empty;
 
@@ -89,6 +95,19 @@ public class ToggleAction : KeypadBase
     private async Task ReturnWeekTime()
     {
         var totalTimeInSeconds = await _clockifyContext.GetCurrentWeekTotalTimeAsync();
+        var hours = totalTimeInSeconds / 3600;
+        var minutes = (totalTimeInSeconds % 3600) / 60;
+        var seconds = totalTimeInSeconds % 60;
+
+        var formattedTime = $"{hours:D2}:{minutes:D2}:{seconds:D2}";
+
+        await Connection.SetStateAsync(ActiveState);
+        await Connection.SetTitleAsync(CreateTimerText(formattedTime));
+    }
+
+    private async Task ReturnDayTime()
+    {
+        var totalTimeInSeconds = await _clockifyContext.GetCurrentDayTimeAsync();
         var hours = totalTimeInSeconds / 3600;
         var minutes = (totalTimeInSeconds % 3600) / 60;
         var seconds = totalTimeInSeconds % 60;
