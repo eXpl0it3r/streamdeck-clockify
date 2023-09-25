@@ -192,7 +192,7 @@ public class ClockifyContext
             return null;
         }
 
-        var totalSeconds = weeklyReport.Data.Totals.Single().TotalTime;
+        var totalSeconds = weeklyReport.Data.Totals.SingleOrDefault()?.TotalTime ?? 0;
 
         return totalSeconds;
     }
@@ -253,7 +253,7 @@ public class ClockifyContext
             return null;
         }
 
-        var totalSeconds = weeklyReport.Data.TotalsByDay.Last().Duration;
+        var totalSeconds = weeklyReport.Data.TotalsByDay.FirstOrDefault(x => x.Date.DayOfWeek == dayOfWeek)?.Duration ?? 0;
 
         return unchecked((int)totalSeconds);
     }

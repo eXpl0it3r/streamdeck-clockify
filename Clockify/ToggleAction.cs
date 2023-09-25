@@ -143,9 +143,8 @@ public class ToggleAction : KeypadBase
     private async Task UpdateWeekTimeFromApi()
     {
         var totalTimeInSeconds = await _clockifyContext.GetCurrentWeekTotalTimeAsync();
-
         await Connection.SetStateAsync(ActiveState);
-        await Connection.SetTitleAsync(GetTimerText(TimeSpan.FromSeconds(totalTimeInSeconds!.Value)));
+        await Connection.SetTitleAsync(GetTimerText(totalTimeInSeconds != null ? TimeSpan.FromSeconds(totalTimeInSeconds!.Value) : null));
     }
 
     private async Task UpdateDayTimeFromApi()
@@ -153,7 +152,7 @@ public class ToggleAction : KeypadBase
         var totalTimeInSeconds = await _clockifyContext.GetCurrentDayTimeAsync();
 
         await Connection.SetStateAsync(ActiveState);
-        await Connection.SetTitleAsync(GetTimerText(TimeSpan.FromSeconds(totalTimeInSeconds!.Value)));
+        await Connection.SetTitleAsync(GetTimerText(totalTimeInSeconds != null ? TimeSpan.FromSeconds(totalTimeInSeconds!.Value) : null));
     }
 
     private string GetTimerText(TimeSpan? timeSpan, bool useCachedValue = false, bool runningTimer = false)
