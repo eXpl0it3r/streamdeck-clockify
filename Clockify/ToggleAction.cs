@@ -9,7 +9,7 @@ public class ToggleAction : KeypadBase
 {
     private const uint InactiveState = 0;
     private const uint ActiveState = 1;
-    private readonly ClockifyContext _clockifyContext;
+    private readonly ClockifyGateway _clockifyGateway;
 
     private readonly Logger _logger;
     private readonly PluginSettings _settings;
@@ -24,7 +24,7 @@ public class ToggleAction : KeypadBase
         Connection.SetTitleAsync("Loading...").Wait();
 
         _logger = new Logger(BarRaider.SdTools.Logger.Instance);
-        _clockifyContext = new ClockifyContext(_logger);
+        _clockifyGateway = new ClockifyGateway(_logger);
         _settings = new PluginSettings();
 
         Tools.AutoPopulateSettings(_settings, payload.Settings);
@@ -62,9 +62,9 @@ public class ToggleAction : KeypadBase
             return;
         }
 
-        if (_clockifyContext.IsValid())
+        if (_clockifyGateway.IsValid())
         {
-            await _clockifyContext.ToggleTimerAsync();
+            await _clockifyGateway.ToggleTimerAsync();
             await UpdateRunningTimerFromApi();
         }
         else
@@ -78,7 +78,13 @@ public class ToggleAction : KeypadBase
         if (_tickCount < 10)
         {
             _tickCount++;
-            await Connection.SetTitleAsync(GetTimerText(null, true, !_settings.ShowDayTime && !_settings.ShowWeekTime));
+            if(_settings.ShowWeekTime || _settings.ShowDayTime)
+            {
+                await Connection.SetTitleAsync(GetCachedTimerText());
+                return;
+            }
+
+            await Connection.SetTitleAsync(GetRunningCachedTimerText());
             return;
         }
 
@@ -94,7 +100,7 @@ public class ToggleAction : KeypadBase
     {
         Tools.AutoPopulateSettings(_settings, payload.Settings);
         _logger.LogDebug($"Settings Received: {_settings}");
-        await _clockifyContext.UpdateSettings(_settings);
+        await _clockifyGateway.UpdateSettings(_settings);
     }
 
     public override void ReceivedGlobalSettings(ReceivedGlobalSettingsPayload payload)
@@ -104,9 +110,9 @@ public class ToggleAction : KeypadBase
 
     private async Task UpdateValuesFromApi()
     {
-        if (!_clockifyContext.IsValid())
+        if (!_clockifyGateway.IsValid())
         {
-            await _clockifyContext.UpdateSettings(_settings);
+            await _clockifyGateway.UpdateSettings(_settings);
             return;
         }
 
@@ -127,7 +133,7 @@ public class ToggleAction : KeypadBase
 
     private async Task UpdateRunningTimerFromApi()
     {
-        var timer = await _clockifyContext.GetRunningTimerAsync();
+        var timer = await _clockifyGateway.GetRunningTimerAsync();
         TimeSpan? timeDifference = null;
         if (timer?.TimeInterval.Start != null)
         {
@@ -139,27 +145,27 @@ public class ToggleAction : KeypadBase
             await Connection.SetStateAsync(InactiveState);
         }
 
-        await Connection.SetTitleAsync(GetTimerText(timeDifference));
+        await Connection.SetTitleAsync(GetRunningTimerText(timeDifference));
     }
 
     private async Task UpdateWeekTimeFromApi()
     {
-        var totalTimeInSeconds = await _clockifyContext.GetCurrentWeekTotalTimeAsync();
+        var totalTimeInSeconds = await _clockifyGateway.GetCurrentWeekTotalTimeAsync();
         await Connection.SetStateAsync(ActiveState);
-        await Connection.SetTitleAsync(GetTimerText(totalTimeInSeconds != null ? TimeSpan.FromSeconds(totalTimeInSeconds!.Value) : null));
+        await Connection.SetTitleAsync(GetStaticTimerText(totalTimeInSeconds != null ? TimeSpan.FromSeconds(totalTimeInSeconds!.Value) : null));
     }
 
     private async Task UpdateDayTimeFromApi()
     {
-        var totalTimeInSeconds = await _clockifyContext.GetCurrentDayTimeAsync();
+        var totalTimeInSeconds = await _clockifyGateway.GetCurrentDayTimeAsync();
 
         await Connection.SetStateAsync(ActiveState);
-        await Connection.SetTitleAsync(GetTimerText(totalTimeInSeconds != null ? TimeSpan.FromSeconds(totalTimeInSeconds!.Value) : null));
+        await Connection.SetTitleAsync(GetStaticTimerText(totalTimeInSeconds != null ? TimeSpan.FromSeconds(totalTimeInSeconds!.Value) : null));
     }
 
-    private string GetTimerText(TimeSpan? timeSpan, bool useCachedValue = false, bool runningTimer = false)
+    private string GetStaticTimerText(TimeSpan? timeSpan)
     {
-        if (timeSpan != null)
+        if (timeSpan.HasValue)
         {
             _cachedTimeSpan = timeSpan.Value;
         }
@@ -167,40 +173,76 @@ public class ToggleAction : KeypadBase
         var timerTime = string.Empty;
         if (_cachedTimeSpan.HasValue)
         {
-            if (useCachedValue && runningTimer)
-            {
-                _cachedTimeSpan = _cachedTimeSpan.Value.Add(TimeSpan.FromSeconds(1));
-            }
-
-            var totalTimeInSeconds = (int)_cachedTimeSpan.Value.TotalSeconds;
-
-            var hours = totalTimeInSeconds / 3600;
-            var minutes = (totalTimeInSeconds % 3600) / 60;
-            var seconds = totalTimeInSeconds % 60;
-
-            timerTime = $"{hours:D2}:{minutes:D2}:{seconds:D2}";
+            timerTime = GetTimerTime();
         }
 
+        return FormatTimerText(timerTime);
+    }
+
+    private string GetRunningTimerText(TimeSpan? timeSpan)
+    {
+        _cachedTimeSpan = timeSpan;
+
+        var timerTime = GetTimerTime();
+
+        return FormatTimerText(timerTime);
+    }
+
+    private string GetRunningCachedTimerText()
+    {
+        var timerTime = string.Empty;
+        if (!_cachedTimeSpan.HasValue)
+        {
+            return FormatTimerText(timerTime);
+        }
+
+        _cachedTimeSpan = _cachedTimeSpan.Value.Add(TimeSpan.FromSeconds(1));
+
+        timerTime = GetTimerTime();
+
+        return FormatTimerText(timerTime);
+    }
+
+    private string GetCachedTimerText()
+    {
+        var timerTime = string.Empty;
+        if (!_cachedTimeSpan.HasValue)
+        {
+            return FormatTimerText(timerTime);
+        }
+
+        timerTime = GetTimerTime();
+
+        return FormatTimerText(timerTime);
+    }
+
+    private string GetTimerTime()
+    {
+        var totalTimeInSeconds = (int?)_cachedTimeSpan?.TotalSeconds;
+
+        if (totalTimeInSeconds == null)
+        {
+            return string.Empty;
+        }
+
+        var hours = totalTimeInSeconds / 3600;
+        var minutes = (totalTimeInSeconds % 3600) / 60;
+        var seconds = totalTimeInSeconds % 60;
+
+        var timerTime = $"{hours:D2}:{minutes:D2}:{seconds:D2}";
+        return timerTime;
+    }
+
+    private string FormatTimerText(string timerTime)
+    {
         if (!string.IsNullOrEmpty(_settings.TitleFormat))
         {
             return _settings.TitleFormat
                 .Replace("{projectName}", _settings.ProjectName)
-                .Replace("{taskName}", _settings.TaskName)
-                .Replace("{timerName}", _settings.TimerName)
                 .Replace("{timer}", timerTime);
         }
 
-        string timerText;
-        if (string.IsNullOrEmpty(_settings.TimerName))
-        {
-            timerText = string.IsNullOrEmpty(_settings.TaskName)
-                ? $"{_settings.ProjectName}"
-                : $"{_settings.ProjectName}:\n{_settings.TaskName}";
-        }
-        else
-        {
-            timerText = $"{_settings.TimerName}";
-        }
+        var timerText = string.Empty;
 
         if (!string.IsNullOrEmpty(timerTime))
         {
