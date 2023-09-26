@@ -21,6 +21,8 @@ public class ToggleAction : KeypadBase
     public ToggleAction(ISDConnection connection, InitialPayload payload)
         : base(connection, payload)
     {
+        Connection.SetTitleAsync("Loading...").Wait();
+
         _logger = new Logger(BarRaider.SdTools.Logger.Instance);
         _clockifyContext = new ClockifyContext(_logger);
         _settings = new PluginSettings();
