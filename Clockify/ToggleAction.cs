@@ -50,26 +50,22 @@ public class ToggleAction : KeypadBase
 
         _cachedTimeSpan = null;
 
-        if (_settings.ShowWeekTime)
+        if (!_clockifyGateway.IsValid())
+        {
+            await Connection.ShowAlert();
+        }
+        else if (_settings.ShowWeekTime)
         {
             await UpdateWeekTimeFromApi();
-            return;
         }
-
-        if (_settings.ShowDayTime)
+        else if (_settings.ShowDayTime)
         {
             await UpdateDayTimeFromApi();
-            return;
-        }
-
-        if (_clockifyGateway.IsValid())
-        {
-            await _clockifyGateway.ToggleTimerAsync();
-            await UpdateRunningTimerFromApi();
         }
         else
         {
-            await Connection.ShowAlert();
+            await _clockifyGateway.ToggleTimerAsync();
+            await UpdateRunningTimerFromApi();
         }
     }
 
@@ -78,9 +74,9 @@ public class ToggleAction : KeypadBase
         if (_tickCount < 10)
         {
             _tickCount++;
-            if(_settings.ShowWeekTime || _settings.ShowDayTime)
+            if (_settings.ShowWeekTime || _settings.ShowDayTime)
             {
-                await Connection.SetTitleAsync(GetCachedTimerText());
+                await Connection.SetTitleAsync(GetCachedStaticTimerText());
                 return;
             }
 
@@ -145,14 +141,14 @@ public class ToggleAction : KeypadBase
             await Connection.SetStateAsync(InactiveState);
         }
 
-        await Connection.SetTitleAsync(GetRunningTimerText(timeDifference));
+        await Connection.SetTitleAsync(UpdateCachedValueAndGetTimeText(timeDifference));
     }
 
     private async Task UpdateWeekTimeFromApi()
     {
         var totalTimeInSeconds = await _clockifyGateway.GetCurrentWeekTotalTimeAsync();
         await Connection.SetStateAsync(ActiveState);
-        await Connection.SetTitleAsync(GetStaticTimerText(totalTimeInSeconds != null ? TimeSpan.FromSeconds(totalTimeInSeconds!.Value) : null));
+        await Connection.SetTitleAsync(UpdateCachedValueAndGetTimeText(totalTimeInSeconds != null ? TimeSpan.FromSeconds(totalTimeInSeconds!.Value) : null));
     }
 
     private async Task UpdateDayTimeFromApi()
@@ -160,30 +156,18 @@ public class ToggleAction : KeypadBase
         var totalTimeInSeconds = await _clockifyGateway.GetCurrentDayTimeAsync();
 
         await Connection.SetStateAsync(ActiveState);
-        await Connection.SetTitleAsync(GetStaticTimerText(totalTimeInSeconds != null ? TimeSpan.FromSeconds(totalTimeInSeconds!.Value) : null));
+        await Connection.SetTitleAsync(UpdateCachedValueAndGetTimeText(totalTimeInSeconds != null ? TimeSpan.FromSeconds(totalTimeInSeconds!.Value) : null));
     }
 
-    private string GetStaticTimerText(TimeSpan? timeSpan)
+    private string UpdateCachedValueAndGetTimeText(TimeSpan? timeSpan)
     {
-        if (timeSpan.HasValue)
-        {
-            _cachedTimeSpan = timeSpan.Value;
-        }
+        _cachedTimeSpan = timeSpan;
 
         var timerTime = string.Empty;
         if (_cachedTimeSpan.HasValue)
         {
             timerTime = GetTimerTime();
         }
-
-        return FormatTimerText(timerTime);
-    }
-
-    private string GetRunningTimerText(TimeSpan? timeSpan)
-    {
-        _cachedTimeSpan = timeSpan;
-
-        var timerTime = GetTimerTime();
 
         return FormatTimerText(timerTime);
     }
@@ -203,7 +187,7 @@ public class ToggleAction : KeypadBase
         return FormatTimerText(timerTime);
     }
 
-    private string GetCachedTimerText()
+    private string GetCachedStaticTimerText()
     {
         var timerTime = string.Empty;
         if (!_cachedTimeSpan.HasValue)
