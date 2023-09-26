@@ -11,6 +11,11 @@ I added 3 features :
 - **Total week time** : I wanted to have the total week logged time, so here it is.
 - **Total day time** : I wanted to have the current day logged time, so here it is.
 
+I removed (because I don't use it):
+- **Task name**
+- **Timer name**
+- **Task name**
+
 ## Download
 
 You can download a copy from the [GitHub release pages](https://github.com/sponsCA/streamdeck-clockify/releases/latest).
@@ -22,16 +27,12 @@ You can download a copy from the [GitHub release pages](https://github.com/spons
   - **API Key:** *(required)* Provide your 48 characters long [Clockify API Key](https://clockify.me/user/settings), which is required for the plugin to work
   - **Workspace Name:** *(required)* Write the name of the workspace you want to run/track timers in
   - **Project Name:** *(optional)* Provide the name of an existing project to run/track a timer for
-  - **Task Name:** *(optional)* Set the name of the project specific task
-  - **Timer Name:** *(optional)* Specify a name for the timer you want to run/track
   - **Show week time:** *(optional)* False by default. If true, the timer value will be the total week time, and clicking on it will update it.
   - **Show current day time:** *(optional)* False by default. If true, the timer value will be the current day time, and clicking on it will update.
 - **Advanced**
   - **Title Format:** *(optional)* Specify the format for the title to be displayed on the button.
     - This can include any of:
       - `{projectName}` : The project name
-      - `{taskName}` : The task name 
-      - `{timerName}` : The timer name 
       - `{timer}` : The current timer value when running. Blank when not running
   - **Server Url:** *(required)* Change from the *default* URL to the API URL of your own/company instance
 
@@ -49,7 +50,7 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
   - Make sure you synchronize your clock with a time server
 
 ## Credits
-
+~~~~
 - Feel free to star this repository and follow me on [Twitter](https://twitter.com/DarkCisum)
 - Thanks to [Bar Raiders](https://barraider.com/) for the great tooling and community
 - Shout-out to [Hugh Macdonald](https://github.com/HughMacdonald) for adding the text formatting feature!
