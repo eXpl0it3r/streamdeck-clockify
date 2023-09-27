@@ -6,7 +6,7 @@ Param(
 
 Push-Location -Path "bin/$target/"
 
-$uuid = "dev.duerrenberger.clockify"
+$uuid = "dev.spons.clockify"
 
 Stop-Process -Name "StreamDeck" -Force -ErrorAction SilentlyContinue
 Stop-Process -Name "$uuid" -Force -ErrorAction SilentlyContinue

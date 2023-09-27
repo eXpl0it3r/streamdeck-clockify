@@ -4,7 +4,7 @@ using BarRaider.SdTools;
 
 namespace Clockify;
 
-[PluginActionId("dev.duerrenberger.clockify.toggle")]
+[PluginActionId("dev.spons.clockify.toggle")]
 public class ToggleAction : KeypadBase
 {
     private const uint InactiveState = 0;

@@ -2,7 +2,7 @@
   <PropertyGroup>
     <UseWindowsForms>false</UseWindowsForms>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <AssemblyName>dev.duerrenberger.clockify</AssemblyName>
+    <AssemblyName>dev.spons.clockify</AssemblyName>
     <OutputType>Exe</OutputType>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -25,14 +25,14 @@
     <LangVersion>10</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <OutputPath>bin\Debug\dev.duerrenberger.clockify.sdPlugin\</OutputPath>
+    <OutputPath>bin\Debug\dev.spons.clockify.sdPlugin\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <OutputPath>bin\Release\dev.duerrenberger.clockify.sdPlugin\</OutputPath>
+    <OutputPath>bin\Release\dev.spons.clockify.sdPlugin\</OutputPath>
   </PropertyGroup>
   <PropertyGroup>
-    <PublishDir>bin\Publish\dev.duerrenberger.clockify.sdPlugin\</PublishDir>
+    <PublishDir>bin\Publish\dev.spons.clockify.sdPlugin\</PublishDir>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Clockify.Net" Version="2.3.0" />

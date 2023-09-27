@@ -19,7 +19,7 @@
       ],
       "SupportedInMultiActions": true,
       "Tooltip": "Toggle a pre-defined Clockify timer",
-      "UUID": "dev.duerrenberger.clockify.toggle",
+      "UUID": "dev.spons.clockify.toggle",
       "PropertyInspectorPath": "PropertyInspector/PluginActionPI.html"
     }
   ],
@@ -29,7 +29,7 @@
   "Icon": "Images/clockifyIcon",
   "URL": "https://duerrenberger.dev",
   "Version": "1.6",
-  "CodePath": "dev.duerrenberger.clockify.exe",
+  "CodePath": "dev.spons.clockify.exe",
   "Category": "Time Tracking",
   "CategoryIcon": "Images/categoryTimerIcon",
   "OS": [
