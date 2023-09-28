@@ -33,7 +33,7 @@ public class ClockifyGateway
 
         var runningTimer = await GetRunningTimerAsync();
 
-        await StopRunningTimerAsync();
+        await StopRunningTimerAsync(runningTimer);
 
         if (runningTimer != null)
         {
@@ -213,7 +213,7 @@ public class ClockifyGateway
         _currentUser = new CurrentUserDto();
     }
 
-    private async Task StopRunningTimerAsync()
+    private async Task StopRunningTimerAsync(TimeEntryDtoImpl runningTimer)
     {
         if (_clockifyClient == null || string.IsNullOrWhiteSpace(_workspaceId))
         {
@@ -226,7 +226,6 @@ public class ClockifyGateway
             return;
         }
 
-        var runningTimer = await GetRunningTimerAsync();
         if (runningTimer == null)
         {
             return;
