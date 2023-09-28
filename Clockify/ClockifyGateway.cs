@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Clockify.Net;
 using Clockify.Net.Models.Projects;
 using Clockify.Net.Models.Reports;
-using Clockify.Net.Models.Tasks;
 using Clockify.Net.Models.TimeEntries;
 using Clockify.Net.Models.Users;
 
@@ -20,7 +19,7 @@ public class ClockifyGateway
     private string _apiKey = string.Empty;
     private string _projectName = string.Empty;
     private string _serverUrl = string.Empty;
-    private string _workspaceName = string.Empty;
+    private string _workspaceId = string.Empty;
 
     public ClockifyGateway(Logger logger)
     {
@@ -34,9 +33,9 @@ public class ClockifyGateway
 
     public async Task ToggleTimerAsync()
     {
-        if (_clockifyClient is null || string.IsNullOrWhiteSpace(_workspaceName))
+        if (_clockifyClient is null || string.IsNullOrWhiteSpace(_workspaceId))
         {
-            _logger.LogWarn($"Invalid settings for toggle {_workspaceName}, {_projectName}");
+            _logger.LogWarn($"Invalid settings for toggle {_workspaceId}, {_projectName}");
             return;
         }
 
@@ -49,25 +48,17 @@ public class ClockifyGateway
             return;
         }
 
-        var workspaces = await _clockifyClient.GetWorkspacesAsync();
-        if (!workspaces.IsSuccessful || workspaces.Data is null)
-        {
-            _logger.LogWarn("Unable to retrieve available workspaces");
-            return;
-        }
-
-        var workspace = workspaces.Data.Single(w => w.Name == _workspaceName);
         var timeEntryRequest = new TimeEntryRequest
         {
             UserId = _currentUser.Id,
-            WorkspaceId = workspace.Id,
+            WorkspaceId = _workspaceId,
             Description = string.Empty,
             Start = DateTimeOffset.UtcNow
         };
 
         if (!string.IsNullOrEmpty(_projectName))
         {
-            var project = await FindMatchingProjectAsync(workspace.Id);
+            var project = await FindMatchingProjectAsync();
 
             if (project is null)
             {
@@ -77,28 +68,20 @@ public class ClockifyGateway
             timeEntryRequest.ProjectId = project.Id;
         }
 
-        await _clockifyClient.CreateTimeEntryAsync(workspace.Id, timeEntryRequest);
-        _logger.LogInfo($"Toggle Timer {_workspaceName}, {_projectName}");
+        await _clockifyClient.CreateTimeEntryAsync(_workspaceId, timeEntryRequest);
+        _logger.LogInfo($"Toggle Timer {_workspaceId}, {_projectName}");
     }
 
     public async Task<TimeEntryDtoImpl> GetRunningTimerAsync()
     {
         // TODO Validation for project
-        if (_clockifyClient is null || string.IsNullOrWhiteSpace(_workspaceName))
+        if (_clockifyClient is null || string.IsNullOrWhiteSpace(_workspaceId))
         {
-            _logger.LogWarn($"Invalid settings for running timer {_workspaceName}");
+            _logger.LogWarn($"Invalid settings for running timer {_workspaceId}");
             return null;
         }
 
-        var workspaces = await _clockifyClient.GetWorkspacesAsync();
-        if (!workspaces.IsSuccessful || workspaces.Data is null)
-        {
-            _logger.LogWarn("Unable to retrieve available workspaces");
-            return null;
-        }
-
-        var workspace = workspaces.Data.Single(w => w.Name == _workspaceName);
-        var timeEntries = await _clockifyClient.FindAllTimeEntriesForUserAsync(workspace.Id, _currentUser.Id, inProgress: true);
+        var timeEntries = await _clockifyClient.FindAllTimeEntriesForUserAsync(_workspaceId, _currentUser.Id, inProgress: true);
         if (!timeEntries.IsSuccessful || timeEntries.Data is null)
         {
             return null;
@@ -109,7 +92,7 @@ public class ClockifyGateway
             return timeEntries.Data.FirstOrDefault();
         }
 
-        var project = await FindMatchingProjectAsync(workspace.Id);
+        var project = await FindMatchingProjectAsync();
 
         if (project is null)
         {
@@ -121,16 +104,9 @@ public class ClockifyGateway
 
     public async Task<int?> GetCurrentWeekTotalTimeAsync()
     {
-        if (_clockifyClient is null || string.IsNullOrWhiteSpace(_workspaceName))
+        if (_clockifyClient is null || string.IsNullOrWhiteSpace(_workspaceId))
         {
-            _logger.LogWarn($"Invalid settings for {_workspaceName}");
-            return null;
-        }
-
-        var workspaces = await _clockifyClient.GetWorkspacesAsync();
-        if (!workspaces.IsSuccessful || workspaces.Data is null)
-        {
-            _logger.LogWarn("Unable to retrieve available workspaces");
+            _logger.LogWarn($"Invalid settings for {_workspaceId}");
             return null;
         }
 
@@ -154,8 +130,7 @@ public class ClockifyGateway
 
         var endOfWeek = startOfWeek.AddDays(6).AddHours(23).AddMinutes(59).AddSeconds(59).AddMilliseconds(999);
 
-        var workspace = workspaces.Data.Single(w => w.Name == _workspaceName);
-        var weeklyReport = await _clockifyClient.GetWeeklyReportAsync(workspace.Id, new WeeklyReportRequest()
+        var weeklyReport = await _clockifyClient.GetWeeklyReportAsync(_workspaceId, new WeeklyReportRequest()
         {
             DateRangeStart = startOfWeek,
             DateRangeEnd = endOfWeek,
@@ -182,16 +157,9 @@ public class ClockifyGateway
 
     public async Task<int?> GetCurrentDayTimeAsync()
     {
-        if (_clockifyClient is null || string.IsNullOrWhiteSpace(_workspaceName))
+        if (_clockifyClient is null || string.IsNullOrWhiteSpace(_workspaceId))
         {
-            _logger.LogWarn($"Invalid settings for {_workspaceName}");
-            return null;
-        }
-
-        var workspaces = await _clockifyClient.GetWorkspacesAsync();
-        if (!workspaces.IsSuccessful || workspaces.Data is null)
-        {
-            _logger.LogWarn("Unable to retrieve available workspaces");
+            _logger.LogWarn($"Invalid settings for {_workspaceId}");
             return null;
         }
 
@@ -215,8 +183,7 @@ public class ClockifyGateway
 
         var endOfWeek = startOfWeek.AddDays(6).AddHours(23).AddMinutes(59).AddSeconds(59).AddMilliseconds(999);
 
-        var workspace = workspaces.Data.Single(w => w.Name == _workspaceName);
-        var weeklyReport = await _clockifyClient.GetWeeklyReportAsync(workspace.Id, new WeeklyReportRequest()
+        var weeklyReport = await _clockifyClient.GetWeeklyReportAsync(_workspaceId, new WeeklyReportRequest()
         {
             DateRangeStart = startOfWeek,
             DateRangeEnd = endOfWeek,
@@ -263,7 +230,7 @@ public class ClockifyGateway
             _clockifyClient = new ClockifyClient(_apiKey, settings.ServerUrl);
         }
 
-        _workspaceName = settings.WorkspaceName;
+        await UpdateWorkspaceId(settings.WorkspaceName);
         _projectName = settings.ProjectName;
 
         if (await TestConnectionAsync())
@@ -279,7 +246,7 @@ public class ClockifyGateway
 
     private async Task StopRunningTimerAsync()
     {
-        if (_clockifyClient == null || string.IsNullOrWhiteSpace(_workspaceName))
+        if (_clockifyClient == null || string.IsNullOrWhiteSpace(_workspaceId))
         {
             return;
         }
@@ -291,7 +258,6 @@ public class ClockifyGateway
             return;
         }
 
-        var workspace = workspaces.Data.Single(w => w.Name == _workspaceName);
         var runningTimer = await GetRunningTimerAsync();
         if (runningTimer == null)
         {
@@ -308,16 +274,16 @@ public class ClockifyGateway
             Description = runningTimer.Description
         };
 
-        await _clockifyClient.UpdateTimeEntryAsync(workspace.Id, runningTimer.Id, timerUpdate);
-        _logger.LogInfo($"Timer Stopped {_workspaceName}, {runningTimer.ProjectId}, {runningTimer.TaskId}, {runningTimer.Description}");
+        await _clockifyClient.UpdateTimeEntryAsync(_workspaceId, runningTimer.Id, timerUpdate);
+        _logger.LogInfo($"Timer Stopped {_workspaceId}, {runningTimer.ProjectId}, {runningTimer.TaskId}, {runningTimer.Description}");
     }
 
-    private async Task<ProjectDtoImpl> FindMatchingProjectAsync(string workspaceId)
+    private async Task<ProjectDtoImpl> FindMatchingProjectAsync()
     {
-        var projects = await _clockifyClient.FindAllProjectsOnWorkspaceAsync(workspaceId, false, _projectName, pageSize: 5000);
+        var projects = await _clockifyClient.FindAllProjectsOnWorkspaceAsync(_workspaceId, false, _projectName, pageSize: 5000);
         if (!projects.IsSuccessful || projects.Data is null)
         {
-            _logger.LogWarn($"Unable to retrieve project {_projectName} on workspace {_workspaceName}");
+            _logger.LogWarn($"Unable to retrieve project {_projectName} on workspace {_workspaceId}");
             return null;
         }
 
@@ -327,17 +293,31 @@ public class ClockifyGateway
 
         if (project.Count > 1)
         {
-            _logger.LogWarn($"Multiple projects with the name {_projectName} on workspace {_workspaceName}");
+            _logger.LogWarn($"Multiple projects with the name {_projectName} on workspace {_workspaceId}");
             return null;
         }
 
         if (!project.Any())
         {
-            _logger.LogWarn($"Unable to find project {_projectName} on workspace {_workspaceName}");
+            _logger.LogWarn($"Unable to find project {_projectName} on workspace {_workspaceId}");
             return null;
         }
 
         return project.Single();
+    }
+
+    private async Task UpdateWorkspaceId(string workspaceName)
+    {
+        var workspaces = await _clockifyClient.GetWorkspacesAsync();
+        if (!workspaces.IsSuccessful || workspaces.Data is null)
+        {
+            _logger.LogWarn("Unable to retrieve available workspaces");
+            return;
+        }
+
+        var workspace = workspaces.Data.Single(w => w.Name == workspaceName);
+
+        _workspaceId = workspace.Id;
     }
 
     private async Task<bool> TestConnectionAsync()
