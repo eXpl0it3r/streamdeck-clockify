@@ -11,7 +11,6 @@ public class ToggleAction : KeypadBase
     private const uint ActiveState = 1;
     private readonly ClockifyGateway _clockifyGateway;
 
-    private readonly Logger _logger;
     private readonly PluginSettings _settings;
 
     // SDK does not allow us to set the tick interval, this is a workaround to only poke the API every 10 ticks (seconds)
@@ -23,31 +22,24 @@ public class ToggleAction : KeypadBase
     {
         Connection.SetTitleAsync("Loading...").Wait();
 
-        _logger = new Logger(BarRaider.SdTools.Logger.Instance);
-        _clockifyGateway = new ClockifyGateway(_logger);
+        _clockifyGateway = new ClockifyGateway();
         _settings = new PluginSettings();
 
         Tools.AutoPopulateSettings(_settings, payload.Settings);
 
         UpdateValuesFromApi().Wait();
-
-        _logger.LogDebug("Creating ToggleAction...");
     }
 
     public override void Dispose()
     {
-        _logger.LogDebug("Disposing ToggleAction...");
     }
 
     public override void KeyPressed(KeyPayload payload)
     {
-        _logger.LogDebug("Key Pressed");
     }
 
     public override async void KeyReleased(KeyPayload payload)
     {
-        _logger.LogDebug("Key Released");
-
         _cachedTimeSpan = null;
 
         if (!_clockifyGateway.IsValid())
@@ -95,13 +87,11 @@ public class ToggleAction : KeypadBase
     public override async void ReceivedSettings(ReceivedSettingsPayload payload)
     {
         Tools.AutoPopulateSettings(_settings, payload.Settings);
-        _logger.LogDebug($"Settings Received: {_settings}");
         await _clockifyGateway.UpdateSettings(_settings);
     }
 
     public override void ReceivedGlobalSettings(ReceivedGlobalSettingsPayload payload)
     {
-        _logger.LogDebug("Global Settings Received");
     }
 
     private async Task UpdateValuesFromApi()
