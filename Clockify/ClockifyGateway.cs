@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Clockify.Dtos;
 using Clockify.Net;
 using Clockify.Net.Models.Reports;
 using Clockify.Net.Models.TimeEntries;
 using Clockify.Net.Models.Users;
+using Newtonsoft.Json.Linq;
 
 namespace Clockify;
 
@@ -33,9 +35,9 @@ public class ClockifyGateway
 
         var runningTimer = await GetRunningTimerAsync();
 
-        await StopRunningTimerAsync(runningTimer);
+        await StopRunningTimerAsync(runningTimer.TimeEntry);
 
-        if (runningTimer != null)
+        if (runningTimer.TimeEntry != null)
         {
             return;
         }
@@ -56,7 +58,7 @@ public class ClockifyGateway
         await _clockifyClient.CreateTimeEntryAsync(_workspaceId, timeEntryRequest);
     }
 
-    public async Task<TimeEntryDtoImpl> GetRunningTimerAsync()
+    public async Task<RunningTimer> GetRunningTimerAsync()
     {
         if (_clockifyClient is null || string.IsNullOrWhiteSpace(_workspaceId))
         {
@@ -69,12 +71,16 @@ public class ClockifyGateway
             return null;
         }
 
+        TimeEntryDtoImpl timeEntry;
         if (string.IsNullOrEmpty(_projectId))
         {
-            return timeEntries.Data.FirstOrDefault();
+            timeEntry = timeEntries.Data.FirstOrDefault();
+            return new RunningTimer(timeEntries.Data.FirstOrDefault(), timeEntry?.ProjectId, timeEntry != null ? await FindProjectName(timeEntry.ProjectId) : null);
         }
 
-        return timeEntries.Data.FirstOrDefault(t => t.ProjectId == _projectId);
+        timeEntry = timeEntries.Data.FirstOrDefault(t => t.ProjectId == _projectId);
+
+        return new RunningTimer(timeEntry, timeEntry?.ProjectId, timeEntry != null ? await FindProjectName(timeEntry.ProjectId) : null);
     }
 
     public async Task<int?> GetCurrentWeekTotalTimeAsync()
@@ -280,6 +286,20 @@ public class ClockifyGateway
         }
 
         _projectId = project.Single().Id;
+    }
+
+    private async Task<string> FindProjectName(string projectId)
+    {
+        var projects = await _clockifyClient.FindProjectByIdAsync(_workspaceId, projectId);
+        if (!projects.IsSuccessful)
+        {
+            return string.Empty;
+        }
+
+        var serializedResponse = JObject.Parse(projects.Content);
+        var projectName = serializedResponse["name"].ToString();
+
+        return projectName;
     }
 
     private async Task<bool> TestConnectionAsync()
