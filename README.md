@@ -18,6 +18,7 @@ Until the plugin is available in the [Stream Deck Store](https://apps.elgato.com
   - **Task Name:** *(optional)* Set the name of the project specific task
   - **Timer Name:** *(optional)* Specify a name for the timer you want to run/track
 - **Advanced**
+  - **Client Name:** *(optional)* Set the client name assigned to the specified project
   - **Title Format:** *(optional)* Specify the format for the title to be displayed on the button.
     - This can include any of:
       - `{projectName}` : The project name
@@ -40,6 +41,9 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
   - Make sure you synchronize your clock with a time server
 - Why can't I select my Workspace and Project in a dropdown menu?
   - Because I was lazy 😅
+- Where can I find the logs?
+  - Windows: `%appdata%\Elgato\StreamDeck\Plugins\dev.duerrenberger.clockify.sdPlugin\pluginlog.log`
+  - macOS: `~/Library/Application Support/com.elgato.StreamDeck/Plugins/dev.duerrenberger.clockify.sdPlugin/pluginlog.log`
 - IT DOESN'T WORK, WHY?!?
   - Feel free to open a [GitHub issue](https://github.com/eXpl0it3r/streamdeck-clockify/issues) or ping me on [Twitter](https://twitter.com/DarkCisum)
 
