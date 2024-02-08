@@ -8,10 +8,14 @@ public class ToggleAction : KeypadBase
 {
     private const uint InactiveState = 0;
     private const uint ActiveState = 1;
+    
     private readonly ClockifyContext _clockifyContext;
 
     private readonly Logger _logger;
     private readonly PluginSettings _settings;
+
+    private int _ticks = 10;
+    private DateTime? _lastStartDate;
 
     public ToggleAction(ISDConnection connection, InitialPayload payload)
         : base(connection, payload)
@@ -39,14 +43,12 @@ public class ToggleAction : KeypadBase
     {
         _logger.LogDebug("Key Released");
 
-        if (_clockifyContext.IsValid())
-        {
-            await _clockifyContext.ToggleTimerAsync();
-        }
-        else
+        if (!_clockifyContext.IsValid() || !await _clockifyContext.ToggleTimerAsync())
         {
             await Connection.ShowAlert();
         }
+
+        _ticks = 10;
     }
 
     public override async void OnTick()
@@ -57,21 +59,40 @@ public class ToggleAction : KeypadBase
             return;
         }
 
-        var timer = await _clockifyContext.GetRunningTimerAsync();
-        var timerTime = string.Empty;
-
-        if (timer?.TimeInterval.Start != null)
+        if (_ticks > 10)
         {
-            var timeDifference = DateTime.UtcNow - timer.TimeInterval.Start.Value.UtcDateTime;
-            timerTime = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
+            var timer = await _clockifyContext.GetRunningTimerAsync();
+            var timerTime = string.Empty;
+
+            if (timer?.TimeInterval.Start != null)
+            {
+                var timeDifference = DateTime.UtcNow - timer.TimeInterval.Start.Value.UtcDateTime;
+                timerTime = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
+                
+                await Connection.SetStateAsync(ActiveState);
+                _lastStartDate = timer.TimeInterval.Start.Value.UtcDateTime;
+            }
+            else
+            {
+                await Connection.SetStateAsync(InactiveState);
+                _lastStartDate = null;
+            }
+
+            await Connection.SetTitleAsync(CreateTimerText(timerTime));
+            _ticks = 0;
+            return;
+        }
+
+        if (_lastStartDate != null)
+        {
+            var timeDifference = DateTime.UtcNow - _lastStartDate.Value;
+            var timerTime = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
+                
             await Connection.SetStateAsync(ActiveState);
-        }
-        else
-        {
-            await Connection.SetStateAsync(InactiveState);
+            await Connection.SetTitleAsync(CreateTimerText(timerTime));
         }
 
-        await Connection.SetTitleAsync(CreateTimerText(timerTime));
+        _ticks++;
     }
 
     public override async void ReceivedSettings(ReceivedSettingsPayload payload)
@@ -91,9 +112,9 @@ public class ToggleAction : KeypadBase
         if (!string.IsNullOrEmpty(_settings.TitleFormat))
         {
             return _settings.TitleFormat
-                            .Replace("{projectName}", _settings.ProjectName)
-                            .Replace("{taskName}", _settings.TaskName)
-                            .Replace("{timerName}", _settings.TimerName)
+                            .Replace("{projectname}", _settings.ProjectName)
+                            .Replace("{taskname}", _settings.TaskName)
+                            .Replace("{timername}", _settings.TimerName)
                             .Replace("{timer}", timerTime);
         }
 

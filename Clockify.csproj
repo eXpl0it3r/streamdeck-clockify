@@ -41,7 +41,7 @@
     <PackageReference Include="NLog" Version="5.2.8" />
     <PackageReference Include="runtime.osx.10.10-x64.CoreCompat.System.Drawing" Version="6.0.5.128" />
     <PackageReference Include="streamdeck-client-csharp" Version="4.3.0" />
-    <PackageReference Include="StreamDeck-Tools" Version="6.1.1" />
+    <PackageReference Include="StreamDeck-Tools" Version="6.2.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

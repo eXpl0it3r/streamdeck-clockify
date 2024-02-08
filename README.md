@@ -33,17 +33,20 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
 
 - Why am I getting a yellow triangle when pressing the button?
   - Your API Key is likely incorrect
+  - If you have clients assigned to your project, make sure they're configured in the Stream Deck
 - Why am I not seeing the running timer on my button?
   - Make sure you haven't set a title, as this will override any other content
   - Make sure the API Key, Workspace name and optional the project and timer name 
 - Why does the timer always start with a negative number?
   - This can happen when your local computer time isn't in sync with the Clockify server time
   - Make sure you synchronize your clock with a time server
+- Why does it always take some seconds to show the timer running?
+  - Due to API rate limits, there's some magical caching going on, leading to certain delays 
 - Why can't I select my Workspace and Project in a dropdown menu?
   - Because I was lazy 😅
 - Where can I find the logs?
-  - Windows: `%appdata%\Elgato\StreamDeck\Plugins\dev.duerrenberger.clockify.sdPlugin\pluginlog.log`
-  - macOS: `~/Library/Application Support/com.elgato.StreamDeck/Plugins/dev.duerrenberger.clockify.sdPlugin/pluginlog.log`
+  - Windows: `%appdata%\Elgato\StreamDeck\Plugins\dev.duerrenberger.clockify.sdPlugin\Windows\pluginlog.log`
+  - macOS: `~/Library/Application Support/com.elgato.StreamDeck/Plugins/dev.duerrenberger.clockify.sdPlugin/macOS/pluginlog.log`
 - IT DOESN'T WORK, WHY?!?
   - Feel free to open a [GitHub issue](https://github.com/eXpl0it3r/streamdeck-clockify/issues) or ping me on [Twitter](https://twitter.com/DarkCisum)
 
