@@ -112,9 +112,11 @@ public class ToggleAction : KeypadBase
         if (!string.IsNullOrEmpty(_settings.TitleFormat))
         {
             return _settings.TitleFormat
-                            .Replace("{projectname}", _settings.ProjectName)
-                            .Replace("{taskname}", _settings.TaskName)
-                            .Replace("{timername}", _settings.TimerName)
+                            .Replace("{workspaceName}", _settings.WorkspaceName)
+                            .Replace("{projectName}", _settings.ProjectName)
+                            .Replace("{taskName}", _settings.TaskName)
+                            .Replace("{timerName}", _settings.TimerName)
+                            .Replace("{clientName}", _settings.ClientName)
                             .Replace("{timer}", timerTime);
         }
 

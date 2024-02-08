@@ -21,9 +21,11 @@ Until the plugin is available in the [Stream Deck Store](https://apps.elgato.com
   - **Client Name:** *(optional)* Set the client name assigned to the specified project
   - **Title Format:** *(optional)* Specify the format for the title to be displayed on the button.
     - This can include any of:
+      - `{workspaceName}` : The workspace name
       - `{projectName}` : The project name
       - `{taskName}` : The task name 
-      - `{timerName}` : The timer name 
+      - `{timerName}` : The timer name
+      - `{clientName}` : The client name
       - `{timer}` : The current timer value when running. Blank when not running
   - **Server Url:** *(required)* Change from the *default* URL to the API URL of your own/company instance
 
