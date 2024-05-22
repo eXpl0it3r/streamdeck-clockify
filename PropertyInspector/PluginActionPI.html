@@ -40,6 +40,19 @@
                         <input class="sdpi-item-value sdProperty" id="clientName" value="" placeholder="Enter the name of the Client" oninput="setSettings()">
                     </div>
                     <div class="sdpi-item">
+                        <div class="sdpi-item-label">Billable</div>
+                        <div class="sdpi-item-value">
+                            <span class="sdpi-item-child">
+                                <input id="rdio1" type="radio" name="billable" checked>
+                                <label for="rdio1" class="sdpi-item-label"><span></span>Yes</label>
+                            </span>
+                            <span class="sdpi-item-child">
+                                <input id="rdio2" type="radio" value="off" name="billable">
+                                <label for="rdio2" class="sdpi-item-label"><span></span>No</label>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="sdpi-item">
                         <div class="sdpi-item-label">Title Format</div>
                         <div class="sdpi-item-value textarea">
                             <textarea class="sdpi-item-value sdProperty" id="titleFormat" type="textarea" maxlength="100" oninput="setSettings()"></textarea>
