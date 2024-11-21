@@ -26,6 +26,7 @@ public class ClockifyContext
     private string _taskName = string.Empty;
     private string _timerName = string.Empty;
     private string _workspaceName = string.Empty;
+    private bool _billable = true;
 
     public ClockifyContext(Logger logger)
     {
@@ -66,7 +67,8 @@ public class ClockifyContext
             UserId = _currentUser.Id,
             WorkspaceId = workspace.Id,
             Description = _timerName ?? string.Empty,
-            Start = DateTimeOffset.UtcNow
+            Start = DateTimeOffset.UtcNow,
+            Billable = _billable
         };
 
         if (!string.IsNullOrEmpty(_projectName))
@@ -183,6 +185,7 @@ public class ClockifyContext
         _taskName = settings.TaskName;
         _timerName = settings.TimerName;
         _clientName = settings.ClientName;
+        _billable = settings.Billable;
     }
 
     private async Task ReloadCacheAsync()
@@ -223,7 +226,7 @@ public class ClockifyContext
             End = DateTimeOffset.UtcNow,
             ProjectId = runningTimer.ProjectId,
             TaskId = runningTimer.TaskId,
-            Description = runningTimer.Description
+            Description = runningTimer.Description,
         };
 
         await _clockifyClient.UpdateTimeEntryAsync(workspace.Id, runningTimer.Id, timerUpdate);
