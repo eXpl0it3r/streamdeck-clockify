@@ -14,16 +14,16 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-        - { name: MacOS, os: macos-12, rid: osx.12-x64 }
-        - { name: Windows VS2022, os: windows-2022, rid: win10-x64 }
+        - { name: MacOS, os: macos-14, rid: osx-x64 }
+        - { name: Windows VS2022, os: windows-2022, rid: win-x64 }
         dotnet:
         - { name: .NET 6, version: '6.0.x' }
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup .NET ${{ matrix.dotnet.version }} SDK
         id: setup-dotnet
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ matrix.dotnet.version }}
       - name: Enforce SDK Version
@@ -37,17 +37,17 @@ jobs:
       - name: Publish
         run: dotnet publish --runtime ${{ matrix.platform.rid }} --self-contained --configuration Release -p:PublishReadyToRun=true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:IncludeNativeLibrariesForSelfExtract=true
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: clockify-${{ matrix.platform.os }}
           path: bin/Publish/dev.duerrenberger.clockify.sdPlugin
   package:
     name: Package Builds
-    runs-on: macos-12
+    runs-on: macos-14
     needs: build
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
       - name: Clean Up Artifacts
         shell: bash
         run: |
@@ -55,7 +55,7 @@ jobs:
           mkdir $GITHUB_WORKSPACE/dev.duerrenberger.clockify.sdPlugin/Windows
           mkdir $GITHUB_WORKSPACE/dev.duerrenberger.clockify.sdPlugin/macOS
           mv $GITHUB_WORKSPACE/clockify-windows-2022/* $GITHUB_WORKSPACE/dev.duerrenberger.clockify.sdPlugin/Windows/
-          mv $GITHUB_WORKSPACE/clockify-macos-12/* $GITHUB_WORKSPACE/dev.duerrenberger.clockify.sdPlugin/macOS/
+          mv $GITHUB_WORKSPACE/clockify-macos-14/* $GITHUB_WORKSPACE/dev.duerrenberger.clockify.sdPlugin/macOS/
           mv $GITHUB_WORKSPACE/dev.duerrenberger.clockify.sdPlugin/Windows/Images/ $GITHUB_WORKSPACE/dev.duerrenberger.clockify.sdPlugin/
           mv $GITHUB_WORKSPACE/dev.duerrenberger.clockify.sdPlugin/Windows/PropertyInspector/ $GITHUB_WORKSPACE/dev.duerrenberger.clockify.sdPlugin/
           mv $GITHUB_WORKSPACE/dev.duerrenberger.clockify.sdPlugin/Windows/manifest.json $GITHUB_WORKSPACE/dev.duerrenberger.clockify.sdPlugin/
@@ -69,7 +69,7 @@ jobs:
           input-directory: "/dev.duerrenberger.clockify.sdPlugin"
           output-directory: "/publish"
       - name: Upload StreamDeck App
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dev.duerrenberger.clockify.streamDeckPlugin
           path: publish/dev.duerrenberger.clockify.streamDeckPlugin
