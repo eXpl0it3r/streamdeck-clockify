@@ -34,10 +34,14 @@
             </div>
             <div type="group" class="sdpi-item" id="advanced">
                 <div class="sdpi-item-label">Advanced</div>
-                <div class="sdpi-item-group" id="messagegroup_items">
+                <div class="sdpi-item-group" id="advancedgroup_items">
                     <div class="sdpi-item">
                         <div class="sdpi-item-label">Client Name</div>
                         <input class="sdpi-item-value sdProperty" id="clientName" value="" placeholder="Enter the name of the Client" oninput="setSettings()">
+                    </div>
+                    <div class="sdpi-item">
+                        <div class="sdpi-item-label">Billable</div>
+                        <input type="checkbox" class="sdpi-item-value sdProperty sdCheckbox" id="billable" oninput="setSettings()" checked>
                     </div>
                     <div class="sdpi-item">
                         <div class="sdpi-item-label">Title Format</div>

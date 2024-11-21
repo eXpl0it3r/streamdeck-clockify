@@ -21,6 +21,9 @@ public class PluginSettings
 
     [JsonProperty(PropertyName = "clientName")]
     public string ClientName { get; set; } = string.Empty;
+    
+    [JsonProperty(PropertyName = "billable")]
+    public bool Billable { get; set; } = true;
 
     [JsonProperty(PropertyName = "titleFormat")]
     public string TitleFormat { get; set; } = string.Empty;
