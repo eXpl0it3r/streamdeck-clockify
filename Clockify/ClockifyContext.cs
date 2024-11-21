@@ -121,12 +121,10 @@ public class ClockifyContext
         {
             return null;
         }
-
+        
         if (string.IsNullOrEmpty(_projectName))
         {
-            return string.IsNullOrEmpty(_timerName)
-                ? timeEntries.Data.FirstOrDefault()
-                : timeEntries.Data.FirstOrDefault(t => t.Description == _timerName);
+            return timeEntries.Data.FirstOrDefault(t => string.IsNullOrEmpty(_timerName) || t.Description == _timerName);
         }
 
         var project = await FindMatchingProjectAsync(workspace.Id);
@@ -135,10 +133,12 @@ public class ClockifyContext
         {
             return null;
         }
+        
+        var task = await FindMatchingTaskAsync(workspace.Id, project.Id, _taskName);
 
-        return string.IsNullOrEmpty(_timerName)
-            ? timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id)
-            : timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id && t.Description == _timerName);
+        return timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id
+                                                    && (string.IsNullOrEmpty(_timerName) || t.Description == _timerName)
+                                                    && (string.IsNullOrEmpty(_taskName) || string.IsNullOrEmpty(task) || t.TaskId == task));
     }
 
     public async Task UpdateSettings(PluginSettings settings)
@@ -258,18 +258,25 @@ public class ClockifyContext
         return project.Single();
     }
 
-    private async Task<string> FindOrCreateTaskAsync(string workspaceId, string projectId, string taskName)
+    private async Task<string> FindMatchingTaskAsync(string workspaceId, string projectId, string taskName)
     {
         var taskResponse = await _clockifyClient.FindAllTasksAsync(workspaceId, projectId, name: taskName, pageSize: 5000);
 
-        if (!taskResponse.IsSuccessful || taskResponse.Data == null)
+        if (!taskResponse.IsSuccessful || taskResponse.Data == null || !taskResponse.Data.Any())
         {
             return null;
         }
 
-        if (taskResponse.Data.Any())
+        return taskResponse.Data.First().Id;
+    }
+
+    private async Task<string> FindOrCreateTaskAsync(string workspaceId, string projectId, string taskName)
+    {
+        var task = await FindMatchingTaskAsync(workspaceId, projectId, taskName);
+
+        if (!string.IsNullOrEmpty(task))
         {
-            return taskResponse.Data.First().Id;
+            return task;
         }
 
         var taskRequest = new TaskRequest
