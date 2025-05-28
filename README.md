@@ -50,11 +50,11 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
   - Windows: `%appdata%\Elgato\StreamDeck\Plugins\dev.duerrenberger.clockify.sdPlugin\Windows\pluginlog.log`
   - macOS: `~/Library/Application Support/com.elgato.StreamDeck/Plugins/dev.duerrenberger.clockify.sdPlugin/macOS/pluginlog.log`
 - IT DOESN'T WORK, WHY?!?
-  - Feel free to open a [GitHub issue](https://github.com/eXpl0it3r/streamdeck-clockify/issues) or ping me on [Twitter](https://twitter.com/DarkCisum)
+  - Feel free to open a [GitHub issue](https://github.com/eXpl0it3r/streamdeck-clockify/issues) or ping me on [Bluesky](https://bsky.app/profile/darkcisum.bsky.social) or [Twitter](https://twitter.com/DarkCisum)
 
 ## Credits
 
-- Feel free to star this repository and follow me on [Twitter](https://twitter.com/DarkCisum)
+- Feel free to star this repository and follow me on [Bluesky](https://bsky.app/profile/darkcisum.bsky.social) or [Twitter](https://twitter.com/DarkCisum)
 - Thanks to [Bar Raiders](https://barraider.com/) for the great tooling and community
 - Shout-out to [Hugh Macdonald](https://github.com/HughMacdonald) for adding the text formatting feature!
 - Took some inspirations from the [Toggl plugin](https://github.com/tobimori/streamdeck-toggl)
