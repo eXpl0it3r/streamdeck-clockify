@@ -20,7 +20,7 @@
     <PackageIconUrl>https://github.com/eXpl0it3r/streamdeck-clockify/blob/master/Images/clockifyIcon%402x.png</PackageIconUrl>
     <RepositoryUrl>https://github.com/eXpl0it3r/streamdeck-clockify</RepositoryUrl>
     <RootNamespace />
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <LangVersion>10</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -40,11 +40,13 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="NLog" Version="5.4.0" />
-    <PackageReference Include="runtime.osx.10.10-x64.CoreCompat.System.Drawing" Version="6.0.5.128" />
+    <PackageReference Include="NLog" Version="5.5.0" />
     <PackageReference Include="streamdeck-client-csharp" Version="4.3.0" />
-    <PackageReference Include="StreamDeck-Tools" Version="6.2.0" />
+    <PackageReference Include="StreamDeck-Tools" Version="6.3.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Collections.Immutable" Version="9.0.6" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.6" />
+    <PackageReference Include="System.Reflection.Metadata" Version="9.0.6" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Images\categoryIcon%402x.png">
@@ -116,5 +118,8 @@
     <None Update="Images\clockifyIcon@2x.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include=".github\workflows\ci.yml" />
   </ItemGroup>
 </Project>
