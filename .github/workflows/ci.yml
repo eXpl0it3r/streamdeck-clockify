@@ -17,7 +17,7 @@ jobs:
         - { name: MacOS, os: macos-14, rid: osx-x64 }
         - { name: Windows VS2022, os: windows-2022, rid: win-x64 }
         dotnet:
-        - { name: .NET 6, version: '6.0.x' }
+        - { name: .NET 8, version: '8.0.x' }
 
     steps:
       - uses: actions/checkout@v4
