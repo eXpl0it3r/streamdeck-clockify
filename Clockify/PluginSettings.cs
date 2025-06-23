@@ -19,6 +19,9 @@ public class PluginSettings
     [JsonProperty(PropertyName = "timerName")]
     public string TimerName { get; set; } = string.Empty;
 
+    [JsonProperty(PropertyName = "tags")]
+    public string Tags { get; set; } = string.Empty;
+
     [JsonProperty(PropertyName = "clientName")]
     public string ClientName { get; set; } = string.Empty;
 
