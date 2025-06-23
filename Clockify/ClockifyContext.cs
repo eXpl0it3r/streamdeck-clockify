@@ -52,7 +52,7 @@ public class ClockifyContext
         if (runningTimer != null)
         {
             _logger.LogDebug("Toggle successful, timer has been stopped");
-            return false;
+            return true;
         }
 
         var workspace = _workspaces.SingleOrDefault(w => w.Name == _workspaceName);
