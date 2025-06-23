@@ -32,6 +32,15 @@
                 <div class="sdpi-item-label">Timer Name</div>
                 <input class="sdpi-item-value sdProperty" id="timerName" value="" placeholder="Enter the name of the Timer" oninput="setSettings()">
             </div>
+            <div class="sdpi-item">
+                <div class="sdpi-item-label">Billable</div>
+                <div class="sdpi-item-value">
+                    <div class="sdpi-item-child">
+                        <input class="sdpi-item-value sdProperty sdCheckbox" id="billable" type="checkbox" checked oninput="setSettings()">
+                        <label for="billable"><span></span>Run timer as billable</label>
+                    </div>
+                </div>
+            </div>
             <div type="group" class="sdpi-item" id="advanced">
                 <div class="sdpi-item-label">Advanced</div>
                 <div class="sdpi-item-group" id="messagegroup_items">
