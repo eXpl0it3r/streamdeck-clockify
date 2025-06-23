@@ -15,18 +15,19 @@ public class ClockifyContext
 {
     private readonly Logger _logger;
 
+    private string _apiKey = string.Empty;
+    private bool _billable = true;
+    private string _clientName = string.Empty;
+
     private ClockifyClient _clockifyClient;
     private CurrentUserDto _currentUser = new();
-    private List<WorkspaceDto> _workspaces = new();
-    
-    private string _apiKey = string.Empty;
-    private string _clientName = string.Empty;
     private string _projectName = string.Empty;
     private string _serverUrl = string.Empty;
+    private string _tags = string.Empty;
     private string _taskName = string.Empty;
     private string _timerName = string.Empty;
     private string _workspaceName = string.Empty;
-    private bool _billable = true;
+    private List<WorkspaceDto> _workspaces = new();
 
     public ClockifyContext(Logger logger)
     {
@@ -61,13 +62,16 @@ public class ClockifyContext
         {
             return false;
         }
-        
+
+        var tags = await FindMatchingTagsAsync(workspace.Id, _tags);
+
         var timeEntryRequest = new TimeEntryRequest
         {
             UserId = _currentUser.Id,
             WorkspaceId = workspace.Id,
             Description = _timerName ?? string.Empty,
             Start = DateTimeOffset.UtcNow,
+            TagIds = tags,
             Billable = _billable
         };
 
@@ -94,12 +98,12 @@ public class ClockifyContext
         }
 
         var timeEntry = await _clockifyClient.CreateTimeEntryAsync(workspace.Id, timeEntryRequest);
-        
+
         if (!timeEntry.IsSuccessful || timeEntry.Data == null)
         {
             _logger.LogError($"TimeEntry creation failed: {timeEntry.ErrorMessage}");
         }
-        
+
         _logger.LogInfo($"Toggle Timer {_workspaceName}, {_projectName}, {_taskName}, {_timerName}");
         return true;
     }
@@ -117,13 +121,14 @@ public class ClockifyContext
         {
             return null;
         }
-        
-        var timeEntries = await _clockifyClient.FindAllTimeEntriesForUserAsync(workspace.Id, _currentUser.Id, inProgress: true);
+
+        var timeEntries =
+            await _clockifyClient.FindAllTimeEntriesForUserAsync(workspace.Id, _currentUser.Id, inProgress: true);
         if (!timeEntries.IsSuccessful || timeEntries.Data is null)
         {
             return null;
         }
-        
+
         if (string.IsNullOrEmpty(_projectName))
         {
             return timeEntries.Data.FirstOrDefault(t => string.IsNullOrEmpty(_timerName) || t.Description == _timerName);
@@ -135,12 +140,16 @@ public class ClockifyContext
         {
             return null;
         }
-        
+
         var task = await FindMatchingTaskAsync(workspace.Id, project.Id, _taskName);
+
+        var tags = await FindMatchingTagsAsync(workspace.Id, _tags);
 
         return timeEntries.Data.FirstOrDefault(t => t.ProjectId == project.Id
                                                     && (string.IsNullOrEmpty(_timerName) || t.Description == _timerName)
-                                                    && (string.IsNullOrEmpty(_taskName) || string.IsNullOrEmpty(task) || t.TaskId == task));
+                                                    && (string.IsNullOrEmpty(_taskName) || string.IsNullOrEmpty(task) || t.TaskId == task)
+                                                    && t.TagIds.OrderBy(s => s, StringComparer.InvariantCulture).SequenceEqual(tags.OrderBy(s => s, StringComparer.InvariantCulture))
+                                                    && t.Billable == _billable);
     }
 
     public async Task UpdateSettings(PluginSettings settings)
@@ -171,7 +180,7 @@ public class ClockifyContext
                 _currentUser = new CurrentUserDto();
                 return;
             }
-            
+
             _logger.LogInfo("Connection to Clockify successfully established");
         }
 
@@ -185,6 +194,7 @@ public class ClockifyContext
         _taskName = settings.TaskName;
         _timerName = settings.TimerName;
         _clientName = settings.ClientName;
+        _tags = settings.Tags;
         _billable = settings.Billable;
     }
 
@@ -212,7 +222,7 @@ public class ClockifyContext
         {
             return;
         }
-        
+
         var runningTimer = await GetRunningTimerAsync();
         if (runningTimer == null)
         {
@@ -226,7 +236,8 @@ public class ClockifyContext
             End = DateTimeOffset.UtcNow,
             ProjectId = runningTimer.ProjectId,
             TaskId = runningTimer.TaskId,
-            Description = runningTimer.Description
+            Description = runningTimer.Description,
+            TagIds = runningTimer.TagIds
         };
 
         await _clockifyClient.UpdateTimeEntryAsync(workspace.Id, runningTimer.Id, timerUpdate);
@@ -295,6 +306,28 @@ public class ClockifyContext
         }
 
         return creationResponse.Data.Id;
+    }
+
+    private async Task<List<string>> FindMatchingTagsAsync(string workspaceId, string tags)
+    {
+        var tagList = tags.Replace("\\,", "█")
+                          .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                          .Select(t => t.Replace("█", ","))
+                          .ToArray();
+
+        if (tagList.Length == 0)
+        {
+            return new List<string>();
+        }
+
+        var tagsOnWorkspace = await _clockifyClient.FindAllTagsOnWorkspaceAsync(workspaceId);
+
+        if (!tagsOnWorkspace.IsSuccessful || tagsOnWorkspace.Data == null)
+        {
+            return new List<string>();
+        }
+
+        return tagsOnWorkspace.Data.Where(t => tagList.Contains(t.Name)).Select(t => t.Id).ToList();
     }
 
     private async Task<bool> TestConnectionAsync()
