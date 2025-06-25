@@ -9,8 +9,8 @@
     <StartupObject>Clockify.Program</StartupObject>
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
-    <AssemblyVersion>1.9</AssemblyVersion>
-    <PackageVersion>1.9</PackageVersion>
+    <AssemblyVersion>1.10</AssemblyVersion>
+    <PackageVersion>1.10</PackageVersion>
     <Title>Clockify</Title>
     <Authors>Lukas Dürrenberger</Authors>
     <Description>This plugin allows you to track, start and stop Clockify timers on your Elgato Stream Deck</Description>
