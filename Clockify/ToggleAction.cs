@@ -55,7 +55,8 @@ public class ToggleAction : KeypadBase
     {
         if (!_clockifyContext.IsValid())
         {
-            await _clockifyContext.UpdateSettings(_settings);
+            MigrateOldServerUrl();
+            await _clockifyContext.UpdateSettingsAsync(_settings);
             return;
         }
 
@@ -98,8 +99,9 @@ public class ToggleAction : KeypadBase
     public override async void ReceivedSettings(ReceivedSettingsPayload payload)
     {
         Tools.AutoPopulateSettings(_settings, payload.Settings);
+        MigrateOldServerUrl();
         _logger.LogDebug($"Settings Received: {_settings}");
-        await _clockifyContext.UpdateSettings(_settings);
+        await _clockifyContext.UpdateSettingsAsync(_settings);
     }
 
     public override void ReceivedGlobalSettings(ReceivedGlobalSettingsPayload payload)
@@ -138,5 +140,11 @@ public class ToggleAction : KeypadBase
         }
 
         return timerText;
+    }
+
+    // ClockifyClient expects the server URL to end with "/api" instead of "/api/v1"
+    private void MigrateOldServerUrl()
+    {
+        _settings.ServerUrl = _settings.ServerUrl.Replace("/api/v1", "/api");
     }
 }

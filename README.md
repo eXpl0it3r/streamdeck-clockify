@@ -31,6 +31,7 @@ Until the plugin is available in the [Stream Deck Store](https://apps.elgato.com
       - `{clientName}` : The client name
       - `{timer}` : The current timer value when running. Blank when not running
   - **Server Url:** *(required)* Change from the *default* URL to the API URL of your own/company instance
+    - Note: Starting with V1.11 the URL should *not* end with `/v1` 
 
 https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-8279-579840ce0a6b.mp4
 
