@@ -32,7 +32,7 @@ public class PluginSettings
     public string TitleFormat { get; set; } = string.Empty;
 
     [JsonProperty(PropertyName = "serverUrl")]
-    public string ServerUrl { get; set; } = "https://api.clockify.me/api/v1";
+    public string ServerUrl { get; set; } = "https://api.clockify.me/api";
 
     public override string ToString()
     {
