@@ -145,13 +145,12 @@ public class ClockifyContext
 
             return timeEntries.FirstOrDefault(t => t.ProjectId == project.Id
                                                    && (string.IsNullOrEmpty(_timerName) || t.Description == _timerName)
-                                                   && (string.IsNullOrEmpty(_taskName) || string.IsNullOrEmpty(task) ||
-                                                       t.TaskId == task)
-                                                   && t.TagIds.OrderBy(s => s, StringComparer.InvariantCulture)
+                                                   && (string.IsNullOrEmpty(_taskName) || string.IsNullOrEmpty(task) || t.TaskId == task)
+                                                   && t.TagIds.Where(s => s != null).OrderBy(s => s, StringComparer.InvariantCulture)
                                                        .SequenceEqual(tags.OrderBy(s => s, StringComparer.InvariantCulture))
                                                    && t.Billable == _billable);
         }
-        catch (Exception exception) when ( exception is ApiException or HttpRequestException)
+        catch (Exception exception) when (exception is ApiException or HttpRequestException)
         {
             return null;
         }
