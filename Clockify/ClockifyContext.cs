@@ -271,12 +271,12 @@ public class ClockifyContext
                 .GetAsync(q =>
                 {
                     q.QueryParameters.Name = _projectName;
-                    q.QueryParameters.StrictNameSearch = "true";
-                    q.QueryParameters.PageSize = MaxPageSize.ToString();
+                    q.QueryParameters.StrictNameSearch = true;
+                    q.QueryParameters.PageSize = MaxPageSize;
 
                     if (clientId is not null)
                     {
-                        q.QueryParameters.Clients = clientId;
+                        q.QueryParameters.Clients = new []{ clientId };
                     }
                 });
 
@@ -309,7 +309,7 @@ public class ClockifyContext
                 .GetAsync(q =>
                 {
                     q.QueryParameters.Name = clientName;
-                    q.QueryParameters.PageSize = MaxPageSize.ToString();
+                    q.QueryParameters.PageSize = MaxPageSize;
                 });
             
             return clientResponse.FirstOrDefault()?.Id;
@@ -328,8 +328,8 @@ public class ClockifyContext
                 .GetAsync(q =>
                 {
                     q.QueryParameters.Name = taskName;
-                    q.QueryParameters.StrictNameSearch = "true";
-                    q.QueryParameters.PageSize = MaxPageSize.ToString();
+                    q.QueryParameters.StrictNameSearch = true;
+                    q.QueryParameters.PageSize = MaxPageSize;
                 });
 
             return taskResponse.FirstOrDefault()?.Id;
@@ -380,7 +380,7 @@ public class ClockifyContext
         try
         {
             var tagsOnWorkspace = await _clockifyClient.V1.Workspaces[workspaceId].Tags
-                .GetAsync(q => q.QueryParameters.PageSize = MaxPageSize.ToString());
+                .GetAsync(q => q.QueryParameters.PageSize = MaxPageSize);
             return tagsOnWorkspace.Where(t => tagList.Contains(t.Name)).Select(t => t.Id).ToList();
         }
         catch (ApiException)

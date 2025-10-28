@@ -34,7 +34,7 @@
     <PublishDir>bin\Publish\dev.duerrenberger.clockify.sdPlugin\</PublishDir>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="ClockifyClient" Version="1.0.3" />
+    <PackageReference Include="ClockifyClient" Version="1.1.1" />
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0">
       <PrivateAssets>all</PrivateAssets>
@@ -44,7 +44,7 @@
     <PackageReference Include="runtime.osx.10.10-x64.CoreCompat.System.Drawing" Version="6.0.5.128" />
     <PackageReference Include="streamdeck-client-csharp" Version="4.3.0" />
     <PackageReference Include="StreamDeck-Tools" Version="6.2.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
   <ItemGroup>
     <None Update="manifest.json">
