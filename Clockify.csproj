@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <UseWindowsForms>false</UseWindowsForms>
-    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <AssemblyName>dev.duerrenberger.clockify</AssemblyName>
     <OutputType>Exe</OutputType>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -20,8 +21,8 @@
     <PackageIconUrl>https://github.com/eXpl0it3r/streamdeck-clockify/blob/master/Images/clockifyIcon%402x.png</PackageIconUrl>
     <RepositoryUrl>https://github.com/eXpl0it3r/streamdeck-clockify</RepositoryUrl>
     <RootNamespace />
-    <TargetFramework>net6.0-windows</TargetFramework>
-    <LangVersion>10</LangVersion>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>bin\Debug\dev.duerrenberger.clockify.sdPlugin\</OutputPath>
@@ -42,9 +43,11 @@
     </PackageReference>
     <PackageReference Include="NLog" Version="5.5.1" />
     <PackageReference Include="runtime.osx.10.10-x64.CoreCompat.System.Drawing" Version="6.0.5.128" />
-    <PackageReference Include="streamdeck-client-csharp" Version="4.3.0" />
-    <PackageReference Include="StreamDeck-Tools" Version="6.2.0" />
+    <PackageReference Include="StreamDeck-Tools" Version="6.3.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <!-- Satisfy dependency resolution for StreamDeck-Tools -->
+    <PackageReference Include="System.Collections.Immutable" Version="9.0.10" />
+    <PackageReference Include="System.Reflection.Metadata" Version="9.0.10" />
   </ItemGroup>
   <ItemGroup>
     <None Update="manifest.json">
