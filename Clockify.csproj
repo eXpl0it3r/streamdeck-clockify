@@ -15,7 +15,7 @@
     <Title>Clockify</Title>
     <Authors>Lukas Dürrenberger</Authors>
     <Description>This plugin allows you to track, start and stop Clockify timers on your Elgato Stream Deck</Description>
-    <Copyright>Copyright (c) 2021-2025 Lukas Dürrenberger</Copyright>
+    <Copyright>Copyright (c) 2021-2026 Lukas Dürrenberger</Copyright>
     <PackageProjectUrl>https://github.com/eXpl0it3r/streamdeck-clockify</PackageProjectUrl>
     <PackageLicenseUrl>https://github.com/eXpl0it3r/streamdeck-clockify/blob/master/LICENSE</PackageLicenseUrl>
     <PackageIconUrl>https://github.com/eXpl0it3r/streamdeck-clockify/blob/master/Images/clockifyIcon%402x.png</PackageIconUrl>
@@ -35,19 +35,19 @@
     <PublishDir>bin\Publish\dev.duerrenberger.clockify.sdPlugin\</PublishDir>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="ClockifyClient" Version="1.1.1" />
+    <PackageReference Include="ClockifyClient" Version="1.2.1" />
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="NLog" Version="5.5.1" />
+    <PackageReference Include="NLog" Version="6.0.7" />
     <PackageReference Include="runtime.osx.10.10-x64.CoreCompat.System.Drawing" Version="6.0.5.128" />
-    <PackageReference Include="StreamDeck-Tools" Version="6.3.1" />
+    <PackageReference Include="StreamDeck-Tools" Version="6.3.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- Satisfy dependency resolution for StreamDeck-Tools -->
-    <PackageReference Include="System.Collections.Immutable" Version="9.0.10" />
-    <PackageReference Include="System.Reflection.Metadata" Version="9.0.10" />
+    <PackageReference Include="System.Collections.Immutable" Version="10.0.2" />
+    <PackageReference Include="System.Reflection.Metadata" Version="10.0.2" />
   </ItemGroup>
   <ItemGroup>
     <None Update="manifest.json">
