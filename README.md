@@ -39,6 +39,7 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
 
 - Why am I getting a yellow triangle when pressing the button?
   - Your API Key is likely incorrect
+  - Make sure your local system time is up-to-date, it's not uncommon for systems to be off by a few seconds
   - If you have clients assigned to your project, make sure they're configured in the Stream Deck
 - Why am I not seeing the running timer on my button?
   - Make sure you haven't set a title, as this will override any other content
@@ -66,7 +67,7 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
 - Shout-out to [Hugh Macdonald](https://github.com/HughMacdonald) for adding the text formatting feature!
 - Took some inspiration from the [Toggl plugin](https://github.com/tobimori/streamdeck-toggl)
 - Using a CC0 licensed [Timer image](https://www.svgrepo.com/svg/23258/timer) for the Time Tracking category
-- Talking to Clockify with the [Clockify.Net](https://github.com/Morasiu/Clockify.Net) library
+- Talking to Clockify with the [ClockifyClient](https://github.com/eXpl0it3r/ClockifyClient) library
 - And thanks to [Clockify](https://clockify.me/) for providing an excellent time tracking tool for free
 
 ## License

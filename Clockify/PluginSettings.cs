@@ -36,6 +36,6 @@ public class PluginSettings
 
     public override string ToString()
     {
-        return $"Workspace: {WorkspaceName}, Project: {ProjectName}, Task: {TaskName}, Timer: {TimerName}";
+        return $"Workspace: '{WorkspaceName}', Project: '{ProjectName}', Task: '{TaskName}', Timer: '{TimerName}', Tags: '{Tags}', Client: '{ClientName}', Billable: '{Billable}'";
     }
 }
