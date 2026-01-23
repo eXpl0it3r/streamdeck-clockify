@@ -22,7 +22,7 @@ Until the plugin is available in the [Stream Deck Store](https://apps.elgato.com
   - **Billable** *(optional)* Check or uncheck the box to run the timer as billable or non-billable 
 - **Advanced**
   - **Client Name:** *(optional)* Set the client name assigned to the specified project
-  - **Title Format:** *(optional)* Specify the format for the title to be displayed on the button.
+  - **Title Format:** *(optional)* Specify the format for the title to be displayed on the button
     - This can include any of:
       - `{workspaceName}` : The workspace name
       - `{projectName}` : The project name
@@ -30,6 +30,7 @@ Until the plugin is available in the [Stream Deck Store](https://apps.elgato.com
       - `{timerName}` : The timer name
       - `{clientName}` : The client name
       - `{timer}` : The current timer value when running. Blank when not running
+  - **Refresh Rate:** *(required)* Define how often the API is being called, the *default* is 5 Seconds 
   - **Server Url:** *(required)* Change from the *default* URL to the API URL of your own/company instance
     - Note: Starting with V1.11 the URL should *not* end with `/v1` 
 

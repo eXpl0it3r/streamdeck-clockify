@@ -48,7 +48,7 @@ public class ToggleAction : KeypadBase
         }
 
         // Immediately update the button
-        _buttonState.Ticks = 5;
+        _buttonState.Ticks = _settings.RefreshRate;
         OnTick();
     }
 
@@ -59,7 +59,7 @@ public class ToggleAction : KeypadBase
             return;
         }
 
-        if (_buttonState.Ticks >= 5)
+        if (_buttonState.Ticks >= _settings.RefreshRate)
         {
             var timer = await _clockifyService.GetRunningTimerAsync();
             var timerTime = string.Empty;

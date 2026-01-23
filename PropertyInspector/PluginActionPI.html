@@ -58,6 +58,16 @@
                         </div>
                     </div>
                     <div class="sdpi-item">
+                        <div class="sdpi-item-label">Refresh Rate</div>
+                        <select class="sdpi-item-value sdProperty" id="refreshRate" oninput="setSettings()">
+                            <option value="1">1 Second</option>
+                            <option value="2">2 Seconds</option>
+                            <option value="5" selected>5 Seconds</option>
+                            <option value="10">10 Seconds</option>
+                            <option value="20">20 Seconds</option>
+                        </select>
+                    </div>
+                    <div class="sdpi-item">
                         <div class="sdpi-item-label">Server Url</div>
                         <input class="sdpi-item-value sdProperty" id="serverUrl" value="https://api.clockify.me/api/v1" placeholder="Enter the ULR of the Server" oninput="setSettings()" required>
                     </div>

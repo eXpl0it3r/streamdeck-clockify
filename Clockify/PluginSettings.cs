@@ -31,6 +31,9 @@ public class PluginSettings
     [JsonProperty(PropertyName = "titleFormat")]
     public string TitleFormat { get; set; } = string.Empty;
 
+    [JsonProperty(PropertyName = "refreshRate")]
+    public uint RefreshRate { get; set; } = 5;
+    
     [JsonProperty(PropertyName = "serverUrl")]
     public string ServerUrl { get; set; } = "https://api.clockify.me/api";
 
