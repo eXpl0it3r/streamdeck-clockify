@@ -1,0 +1,57 @@
+﻿<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name=viewport content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,minimal-ui,viewport-fit=cover">
+        <meta name=apple-mobile-web-app-capable content=yes>
+        <meta name=apple-mobile-web-app-status-bar-style content=black>
+        <title>Clockify Settings</title>
+        <link rel="stylesheet" href="sdpi.css">
+        <script src="sdtools.common.js"></script>
+    </head>
+    <body>
+        <div class="sdpi-wrapper">
+            <div class="sdpi-item">
+                <div class="sdpi-item-label">API Key</div>
+                <input class="sdpi-item-value sdProperty" id="apiKey" value="" pattern="[A-Za-z0-9]+" placeholder="Enter your Private API Key" oninput="setSettings()" required>
+            </div>
+            <div class="sdpi-item">
+                <div class="sdpi-item-label">Workspace Name</div>
+                <input class="sdpi-item-value sdProperty" id="workspaceName" value="" placeholder="Enter the name of the Workspace" oninput="setSettings()" required>
+            </div>
+            <div class="sdpi-item">
+                <div class="sdpi-item-label">Project Name</div>
+                <input class="sdpi-item-value sdProperty" id="projectName" value="" placeholder="Enter the name of the Project" oninput="setSettings()">
+            </div>
+            <div type="group" class="sdpi-item" id="advanced">
+                <div class="sdpi-item-label">Advanced</div>
+                <div class="sdpi-item-group" id="messagegroup_items">
+                    <div class="sdpi-item">
+                        <div class="sdpi-item-label">Client Name</div>
+                        <input class="sdpi-item-value sdProperty" id="clientName" value="" placeholder="Enter the name of the Client" oninput="setSettings()">
+                    </div>
+                    <div class="sdpi-item">
+                        <div class="sdpi-item-label">Title Format</div>
+                        <div class="sdpi-item-value textarea">
+                            <textarea class="sdpi-item-value sdProperty" id="titleFormat" type="textarea" maxlength="100" oninput="setSettings()"></textarea>
+                        </div>
+                    </div>
+                    <div class="sdpi-item">
+                        <div class="sdpi-item-label">Refresh Rate</div>
+                        <select class="sdpi-item-value sdProperty" id="refreshRate" oninput="setSettings()">
+                            <option value="1">1 Second</option>
+                            <option value="2">2 Seconds</option>
+                            <option value="5" selected>5 Seconds</option>
+                            <option value="10">10 Seconds</option>
+                            <option value="20">20 Seconds</option>
+                        </select>
+                    </div>
+                    <div class="sdpi-item">
+                        <div class="sdpi-item-label">Server Url</div>
+                        <input class="sdpi-item-value sdProperty" id="serverUrl" value="https://api.clockify.me/api/v1" placeholder="Enter the ULR of the Server" oninput="setSettings()" required>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

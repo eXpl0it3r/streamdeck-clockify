@@ -20,7 +20,29 @@
       "SupportedInMultiActions": true,
       "Tooltip": "Toggle a pre-defined Clockify timer",
       "UUID": "dev.duerrenberger.clockify.toggle",
-      "PropertyInspectorPath": "PropertyInspector/PluginActionPI.html"
+      "PropertyInspectorPath": "PropertyInspector/ToggleActionPI.html"
+    },
+    {
+      "Icon": "Images/clockifyIcon",
+      "Name": "Stop Clockify Timers",
+      "States": [
+        {
+          "Image": "Images/stopActionInactiveIcon",
+          "TitleAlignment": "middle",
+          "TitleColor": "#1E1E1E",
+          "FontSize": "10"
+        },
+        {
+          "Image": "Images/stopActionActiveIcon",
+          "TitleAlignment": "middle",
+          "TitleColor": "#1E1E1E",
+          "FontSize": "10"
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "Tooltip": "Stop all running Clockify timers",
+      "UUID": "dev.duerrenberger.clockify.stop",
+      "PropertyInspectorPath": "PropertyInspector/StopActionPI.html"
     }
   ],
   "Author": "Lukas Duerrenberger",

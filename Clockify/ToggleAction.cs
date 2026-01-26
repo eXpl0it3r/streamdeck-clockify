@@ -35,12 +35,12 @@ public class ToggleAction : KeypadBase
 
     public override void KeyPressed(KeyPayload payload)
     {
-        _logger.LogInfo("Key Pressed");
+        _logger.LogInfo("ToggleAction Key Pressed");
     }
 
     public override async void KeyReleased(KeyPayload payload)
     {
-        _logger.LogInfo("Key Released");
+        _logger.LogInfo("ToggleAction Key Released");
 
         if (!_clockifyService.IsValid || !await _clockifyService.ToggleTimerAsync())
         {
@@ -98,13 +98,13 @@ public class ToggleAction : KeypadBase
     public override async void ReceivedSettings(ReceivedSettingsPayload payload)
     {
         Tools.AutoPopulateSettings(_settings, payload.Settings);
-        _logger.LogInfo($"Settings Received: {_settings}");
+        _logger.LogInfo($"ToggleAction Settings Received: {_settings}");
         await _clockifyService.UpdateSettingsAsync(_settings);
     }
 
     public override void ReceivedGlobalSettings(ReceivedGlobalSettingsPayload payload)
     {
-        _logger.LogInfo("Global Settings Received");
+        _logger.LogInfo("ToggleAction Global Settings Received");
     }
 
     private async Task<bool> TryInitializingClockifyContext()
