@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using ClockifyClient;
 using ClockifyClient.Models;
@@ -13,6 +14,8 @@ public class ClockifyService(Logger logger)
 {
     private const int MaxPageSize = 5000;
 
+    private readonly SemaphoreSlim _cacheLock = new SemaphoreSlim(1, 1);
+
     private PluginSettings _settings = new();
 
     private ClockifyApiClient _clockifyClient;
@@ -21,7 +24,6 @@ public class ClockifyService(Logger logger)
     private ProjectDtoV1 _project = new();
     private List<string> _tags = [];
     private TaskDtoV1 _task = new();
-    private ClientWithCurrencyDtoV1 _client = new();
 
     public bool IsValid => _clockifyClient is not null
                            && !string.IsNullOrWhiteSpace(_settings.WorkspaceName)
@@ -30,33 +32,41 @@ public class ClockifyService(Logger logger)
     public async Task<bool> ToggleTimerAsync()
     {
         logger.LogInfo("Toggling timer...");
-        
-        if (!IsValid)
-        {
-            logger.LogError($"Toggling trimer failed, invalid settings: {_settings}");
-            return false;
-        }
 
-        var runningTimer = await StopRunningTimerAsync();
-
-        if (runningTimer is not null)
-        {
-            logger.LogInfo("Toggling trimer successful, timer has been stopped");
-            return true;
-        }
-
+        await _cacheLock.WaitAsync();
         try
         {
-            var timeEntryRequest = await CreateTimeEntryRequestAsync();
-            await _clockifyClient.V1.Workspaces[_workspace.Id].TimeEntries.PostAsync(timeEntryRequest);
-            
-            logger.LogInfo("Toggling trimer successful, timer has been started");
-            return true;
+            if (!IsValid)
+            {
+                logger.LogError($"Toggling trimer failed, invalid settings: {_settings}");
+                return false;
+            }
+
+            var runningTimer = await StopRunningTimerAsync();
+
+            if (runningTimer is not null)
+            {
+                logger.LogInfo("Toggling trimer successful, timer has been stopped");
+                return true;
+            }
+
+            try
+            {
+                var timeEntryRequest = await CreateTimeEntryRequestAsync();
+                await _clockifyClient.V1.Workspaces[_workspace.Id].TimeEntries.PostAsync(timeEntryRequest);
+
+                logger.LogInfo("Toggling trimer successful, timer has been started");
+                return true;
+            }
+            catch (Exception exception) when (exception is ApiException or HttpRequestException)
+            {
+                logger.LogError($"Toggling trimer failed, TimeEntry creation failed: {exception.Message}");
+                return false;
+            }
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException)
+        finally
         {
-            logger.LogError($"Toggling trimer failed, TimeEntry creation failed: {exception.Message}");
-            return false;
+            _cacheLock.Release();
         }
     }
 
@@ -64,39 +74,47 @@ public class ClockifyService(Logger logger)
     {
         logger.LogInfo("Fetching running timer...");
         
-        if (!IsValid)
-        {
-            logger.LogError($"Fetching running timer failed, invalid settings: {_settings}");
-            return null;
-        }
-
+        await _cacheLock.WaitAsync();
         try
         {
-            var timeEntries = await _clockifyClient.V1.Workspaces[_workspace.Id].User[_currentUser.Id].TimeEntries
-                .GetAsync(p => p.QueryParameters.InProgress = true);
-            
-            if (string.IsNullOrEmpty(_settings.ProjectName))
+            if (!IsValid)
             {
-                return timeEntries?.FirstOrDefault(t => string.IsNullOrEmpty(_settings.TimerName) || t.Description == _settings.TimerName);
-            }
-            
-            if (_project is null)
-            {
-                logger.LogError($"Fetching running timer failed, no project in workspace matching {_settings.ProjectName}");
+                logger.LogError($"Fetching running timer failed, invalid settings: {_settings}");
                 return null;
             }
 
-            return timeEntries?.FirstOrDefault(t => t.ProjectId == _project.Id
-                                                    && (string.IsNullOrEmpty(_settings.TimerName) || t.Description == _settings.TimerName)
-                                                    && (string.IsNullOrEmpty(_settings.TaskName) || string.IsNullOrEmpty(_task?.Id) || t.TaskId == _task.Id)
-                                                    && ((t.TagIds is null && _tags is null) || t.TagIds is not null && _tags is not null && t.TagIds.OrderBy(s => s, StringComparer.InvariantCulture)
-                                                        .SequenceEqual(_tags.OrderBy(s => s, StringComparer.InvariantCulture)))
-                                                    && t.Billable == _settings.Billable);
+            try
+            {
+                var timeEntries = await _clockifyClient.V1.Workspaces[_workspace.Id].User[_currentUser.Id].TimeEntries
+                    .GetAsync(p => p.QueryParameters.InProgress = true);
+
+                if (string.IsNullOrEmpty(_settings.ProjectName))
+                {
+                    return timeEntries?.FirstOrDefault(t => string.IsNullOrEmpty(_settings.TimerName) || t.Description == _settings.TimerName);
+                }
+
+                if (_project is null)
+                {
+                    logger.LogError($"Fetching running timer failed, no project in workspace matching {_settings.ProjectName}");
+                    return null;
+                }
+
+                return timeEntries?.FirstOrDefault(t => t.ProjectId == _project.Id
+                                                        && (string.IsNullOrEmpty(_settings.TimerName) || t.Description == _settings.TimerName)
+                                                        && (string.IsNullOrEmpty(_settings.TaskName) || string.IsNullOrEmpty(_task?.Id) || t.TaskId == _task.Id)
+                                                        && ((t.TagIds is null && _tags is null) || (t.TagIds is not null && _tags is not null && t.TagIds.OrderBy(s => s, StringComparer.InvariantCulture)
+                                                            .SequenceEqual(_tags.OrderBy(s => s, StringComparer.InvariantCulture))))
+                                                        && t.Billable == _settings.Billable);
+            }
+            catch (Exception exception) when (exception is ApiException or HttpRequestException)
+            {
+                logger.LogError($"Fetching running timer failed, TimeEntry request failed: {exception.Message}");
+                return null;
+            }
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException)
+        finally
         {
-            logger.LogError($"Fetching running timer failed, TimeEntry request failed: {exception.Message}");
-            return null;
+            _cacheLock.Release();
         }
     }
 
@@ -104,42 +122,50 @@ public class ClockifyService(Logger logger)
     {
         logger.LogInfo("Updating settings...");
         
-        SettingsValidator.MigrateServerUrl(settings);
-        
-        var cacheInvalidationRequired = SettingsValidator.HasChanged(_settings, settings);
-        
-        // Do we need to recreate the client?
-        if (!IsValid || _settings.ApiKey != settings.ApiKey || _settings.ServerUrl != settings.ServerUrl)
+        await _cacheLock.WaitAsync();
+        try
         {
-            logger.LogInfo("Updating settings, recreate Clockify client");
-            
-            var validation = SettingsValidator.Validate(settings);
+            SettingsValidator.MigrateServerUrl(settings);
+            var cacheInvalidationRequired = SettingsValidator.HasChanged(_settings, settings);
 
-            if (!validation.IsValid)
+
+            // Do we need to recreate the client?
+            if (!IsValid || _settings.ApiKey != settings.ApiKey || _settings.ServerUrl != settings.ServerUrl)
             {
-                logger.LogError($"Updating settings failed, settings validation failed: {validation.Error}");
-                return;
+                logger.LogInfo("Updating settings, recreate Clockify client");
+
+                var validation = SettingsValidator.Validate(settings);
+
+                if (!validation.IsValid)
+                {
+                    logger.LogError($"Updating settings failed, settings validation failed: {validation.Error}");
+                    return;
+                }
+
+                _clockifyClient = ClockifyApiClientFactory.Create(settings.ApiKey, settings.ServerUrl);
+
+                if (!await TestConnectionAsync())
+                {
+                    logger.LogError("Updating settings failed, invalid server URL or API key");
+                    _clockifyClient = null;
+                    _currentUser = new UserDtoV1();
+                    return;
+                }
+
+                logger.LogInfo("Updating settings successful, connection to Clockify established");
+                cacheInvalidationRequired = true;
             }
 
-            _clockifyClient = ClockifyApiClientFactory.Create(settings.ApiKey, settings.ServerUrl);
+            _settings = new PluginSettings(settings);
 
-            if (!await TestConnectionAsync())
+            if (cacheInvalidationRequired)
             {
-                logger.LogError("Updating settings failed, invalid server URL or API key");
-                _clockifyClient = null;
-                _currentUser = new UserDtoV1();
-                return;
+                await ReloadCacheAsync();
             }
-
-            logger.LogInfo("Updating settings successful, connection to Clockify established");
-            cacheInvalidationRequired = true;
         }
-
-        _settings = settings;
-        
-        if (cacheInvalidationRequired)
+        finally
         {
-            await ReloadCacheAsync();
+            _cacheLock.Release();
         }
     }
 
@@ -180,22 +206,21 @@ public class ClockifyService(Logger logger)
         _project = null;
         _tags = [];
         _task = null;
-        _client = null;
         
         try
         {
             var workspaces = await _clockifyClient.V1.Workspaces.GetAsync();
             _workspace = workspaces?.SingleOrDefault(w => w.Name == _settings.WorkspaceName);
 
-            if (_workspace != null)
+            if (_workspace is not null)
             {
-                _project = await FindMatchingProjectAsync(_workspace.Id, _settings.ProjectName);
+                var client = await FindMatchingClientAsync(_workspace.Id, _settings.ClientName);
+                _project = await FindMatchingProjectAsync(_workspace.Id, _settings.ProjectName, client?.Id);
                 _tags = await FindMatchingTagsAsync(_workspace.Id, _settings.Tags);
 
-                if (_project != null)
+                if (_project is not null)
                 {
                     _task = await FindMatchingTaskAsync(_workspace.Id, _project.Id, _settings.TaskName);
-                    _client = await FindMatchingClientAsync(_workspace.Id, _settings.ClientName);
                 }
             }
             
@@ -216,7 +241,7 @@ public class ClockifyService(Logger logger)
         }
 
         var runningTimer = await GetRunningTimerAsync();
-        if (runningTimer == null)
+        if (runningTimer is null)
         {
             // No running timer
             return null;
@@ -246,12 +271,14 @@ public class ClockifyService(Logger logger)
         return runningTimer;
     }
 
-    private async Task<ProjectDtoV1> FindMatchingProjectAsync(string workspaceId, string projectName)
+    private async Task<ProjectDtoV1> FindMatchingProjectAsync(string workspaceId, string projectName, string clientId = null)
     {
         if (string.IsNullOrEmpty(projectName))
         {
             return null;
         }
+        
+        logger.LogInfo("Finding matching project...");
         
         try
         {
@@ -262,9 +289,9 @@ public class ClockifyService(Logger logger)
                     q.QueryParameters.StrictNameSearch = true;
                     q.QueryParameters.PageSize = MaxPageSize;
 
-                    if (_client is not null)
+                    if (clientId is not null)
                     {
-                        q.QueryParameters.Clients = [_client.Id];
+                        q.QueryParameters.Clients = [clientId];
                     }
                 });
 
@@ -395,7 +422,7 @@ public class ClockifyService(Logger logger)
             var tagsOnWorkspace = await _clockifyClient.V1.Workspaces[workspaceId].Tags
                 .GetAsync(q => q.QueryParameters.PageSize = MaxPageSize);
 
-            return tagsOnWorkspace == null ? [] : tagsOnWorkspace.Where(t => tagList.Contains(t.Name)).Select(t => t.Id).ToList();
+            return tagsOnWorkspace is null ? [] : tagsOnWorkspace.Where(t => tagList.Contains(t.Name)).Select(t => t.Id).ToList();
         }
         catch (Exception exception) when (exception is ApiException or HttpRequestException)
         {

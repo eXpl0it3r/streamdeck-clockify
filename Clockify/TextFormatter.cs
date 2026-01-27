@@ -1,3 +1,5 @@
+using System;
+
 namespace Clockify;
 
 public static class TextFormatter
@@ -7,12 +9,12 @@ public static class TextFormatter
         if (!string.IsNullOrEmpty(settings.TitleFormat))
         {
             return settings.TitleFormat
-                .Replace("{workspaceName}", settings.WorkspaceName)
-                .Replace("{projectName}", settings.ProjectName)
-                .Replace("{taskName}", settings.TaskName)
-                .Replace("{timerName}", settings.TimerName)
-                .Replace("{clientName}", settings.ClientName)
-                .Replace("{timer}", timerTime);
+                .Replace("{workspaceName}", settings.WorkspaceName, StringComparison.InvariantCultureIgnoreCase)
+                .Replace("{projectName}", settings.ProjectName, StringComparison.InvariantCultureIgnoreCase)
+                .Replace("{taskName}", settings.TaskName, StringComparison.InvariantCultureIgnoreCase)
+                .Replace("{timerName}", settings.TimerName, StringComparison.InvariantCultureIgnoreCase)
+                .Replace("{clientName}", settings.ClientName, StringComparison.InvariantCultureIgnoreCase)
+                .Replace("{timer}", timerTime, StringComparison.InvariantCultureIgnoreCase);
         }
 
         string timerText;

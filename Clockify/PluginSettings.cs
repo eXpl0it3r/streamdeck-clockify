@@ -4,6 +4,24 @@ namespace Clockify;
 
 public class PluginSettings
 {
+    public PluginSettings()
+    {}
+
+    public PluginSettings(PluginSettings settings)
+    {
+        ApiKey = settings.ApiKey;
+        WorkspaceName = settings.WorkspaceName;
+        ProjectName = settings.ProjectName;
+        TaskName = settings.TaskName;
+        TimerName = settings.TimerName;
+        Tags = settings.Tags;
+        ClientName = settings.ClientName;
+        Billable = settings.Billable;
+        TitleFormat = settings.TitleFormat;
+        RefreshRate = settings.RefreshRate;
+        ServerUrl = settings.ServerUrl;
+    }
+    
     [JsonProperty(PropertyName = "apiKey")]
     public string ApiKey { get; set; } = string.Empty;
 
