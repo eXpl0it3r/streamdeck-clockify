@@ -21,7 +21,7 @@
     <PackageIconUrl>https://github.com/eXpl0it3r/streamdeck-clockify/blob/master/Images/clockifyIcon%402x.png</PackageIconUrl>
     <RepositoryUrl>https://github.com/eXpl0it3r/streamdeck-clockify</RepositoryUrl>
     <RootNamespace />
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <LangVersion>12.0</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -35,19 +35,15 @@
     <PublishDir>bin\Publish\dev.duerrenberger.clockify.sdPlugin\</PublishDir>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="ClockifyClient" Version="1.2.2" />
+    <PackageReference Include="ClockifyClient" Version="1.2.13" />
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0">
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.6.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="NLog" Version="6.0.7" />
-    <PackageReference Include="runtime.osx.10.10-x64.CoreCompat.System.Drawing" Version="6.0.5.128" />
-    <PackageReference Include="StreamDeck-Tools" Version="6.3.2" />
+    <PackageReference Include="NLog" Version="6.1.4" />
+    <PackageReference Include="StreamDeck-Tools" Version="7.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <!-- Satisfy dependency resolution for StreamDeck-Tools -->
-    <PackageReference Include="System.Collections.Immutable" Version="10.0.2" />
-    <PackageReference Include="System.Reflection.Metadata" Version="10.0.2" />
   </ItemGroup>
   <ItemGroup>
     <None Update="manifest.json">

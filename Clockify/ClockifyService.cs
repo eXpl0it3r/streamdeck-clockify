@@ -147,7 +147,7 @@ public class ClockifyService(Logger logger)
         try
         {
             var timeEntries = await _clockifyClient.V1.Workspaces[_workspace.Id].User[_currentUser.Id].TimeEntries
-                                                   .GetAsync(p => p.QueryParameters.InProgress = true);
+                                                   .GetAsync(p => p.QueryParameters.InProgress = "true");
 
             if (string.IsNullOrEmpty(_settings.ProjectName))
             {
