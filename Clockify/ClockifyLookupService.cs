@@ -88,6 +88,13 @@ public class ClockifyLookupService(Logger logger)
                         q.QueryParameters.PageSize = MaxPageSize;
                     });
                 clientId = clients?.FirstOrDefault(c => c.Name == clientName)?.Id;
+
+                // Filter war angefragt, aber Client nicht auflösbar -> leere Liste statt
+                // stillschweigend alle Projekte des Workspace zurückzugeben.
+                if (clientId is null)
+                {
+                    return [];
+                }
             }
 
             var projects = await client.V1.Workspaces[workspaceId].Projects
@@ -161,23 +168,22 @@ public class ClockifyLookupService(Logger logger)
 
     private ClockifyApiClient TryCreateClient(string apiKey, string serverUrl)
     {
-        if (string.IsNullOrWhiteSpace(apiKey) || apiKey.Length != 48)
+        var settings = new PluginSettings
         {
-            return null;
-        }
+            ApiKey = apiKey,
+            ServerUrl = string.IsNullOrWhiteSpace(serverUrl) ? "https://api.clockify.me/api" : serverUrl
+        };
+        SettingsValidator.MigrateServerUrl(settings);
 
-        var url = string.IsNullOrWhiteSpace(serverUrl)
-            ? "https://api.clockify.me/api"
-            : serverUrl.Replace("/api/v1", "/api");
-
-        if (!Uri.IsWellFormedUriString(url, UriKind.Absolute))
+        var (isValid, _) = SettingsValidator.Validate(settings);
+        if (!isValid)
         {
             return null;
         }
 
         try
         {
-            return ClockifyApiClientFactory.Create(apiKey, url);
+            return ClockifyApiClientFactory.Create(settings.ApiKey, settings.ServerUrl);
         }
         catch (Exception e)
         {
