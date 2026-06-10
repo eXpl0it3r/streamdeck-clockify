@@ -62,6 +62,9 @@
     <None Update="PropertyInspector\sdtools.common.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="PropertyInspector\clockify-pi.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Images\toggleActionActiveIcon.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
