@@ -20,6 +20,10 @@ public class PluginSettings
         TitleFormat = settings.TitleFormat;
         RefreshRate = settings.RefreshRate;
         ServerUrl = settings.ServerUrl;
+        WorkspaceManual = settings.WorkspaceManual;
+        ClientManual = settings.ClientManual;
+        ProjectManual = settings.ProjectManual;
+        TaskManual = settings.TaskManual;
     }
     
     [JsonProperty(PropertyName = "apiKey")]
@@ -54,6 +58,18 @@ public class PluginSettings
     
     [JsonProperty(PropertyName = "serverUrl")]
     public string ServerUrl { get; set; } = "https://api.clockify.me/api";
+
+    [JsonProperty(PropertyName = "workspaceManual")]
+    public bool WorkspaceManual { get; set; }
+
+    [JsonProperty(PropertyName = "clientManual")]
+    public bool ClientManual { get; set; }
+
+    [JsonProperty(PropertyName = "projectManual")]
+    public bool ProjectManual { get; set; }
+
+    [JsonProperty(PropertyName = "taskManual")]
+    public bool TaskManual { get; set; }
 
     public override string ToString()
     {
