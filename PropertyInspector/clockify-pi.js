@@ -45,6 +45,13 @@
         }
     }
 
+    function requestAll() {
+        requestList('workspace');
+        requestList('client');
+        requestList('project');
+        requestList('task');
+    }
+
     // Befüllt das Dropdown und stellt die gespeicherte Auswahl wieder her.
     // Ist der gespeicherte Wert nicht in der Liste, wird er als Option ergänzt,
     // damit die Auswahl nicht still verloren geht.
@@ -121,11 +128,18 @@
         textEl(key).addEventListener('change', function () {
             cascadeFrom(key);
         });
-        // Umschalter Liste/Freitext.
+        // Umschalter Liste/Freitext. Den wahren Wert (verstecktes Quell-Feld) über den
+        // Umschalt-Vorgang tragen und ins Ziel-Widget spiegeln – sonst überschreibt ein
+        // leeres/veraltetes Widget den gespeicherten Wert.
         toggleEl(key).addEventListener('click', function () {
             var manual = !hiddenManual(key).checked;
+            var value = currentValue(key);
             setManualMode(key, manual);
-            var value = manual ? textEl(key).value : selectEl(key).value;
+            if (manual) {
+                textEl(key).value = value;
+            } else {
+                selectEl(key).value = value;
+            }
             commit(key, value, manual);
         });
     }
@@ -143,10 +157,7 @@
         // Auto-Load der Wurzel; Kaskade folgt über die Antworten + gespeicherte Werte.
         var apiKey = $('apiKey') ? $('apiKey').value : '';
         if (apiKey) {
-            requestList('workspace');
-            requestList('client');
-            requestList('project');
-            requestList('task');
+            requestAll();
         }
     }
 
@@ -154,12 +165,7 @@
         if (typeof websocket === 'undefined' || !websocket) { return; }
         websocket.addEventListener('message', onPluginMessage);
         for (var key in FIELDS) { wireField(key); }
-        $('cfRefresh').addEventListener('click', function () {
-            requestList('workspace');
-            requestList('client');
-            requestList('project');
-            requestList('task');
-        });
+        $('cfRefresh').addEventListener('click', requestAll);
         // Initiales Laden erst, wenn der Socket OFFEN ist. Beim 'websocketCreate'
         // ist der Socket noch CONNECTING; ein setTimeout(0) liefe vor 'open' und
         // sendPayloadToPlugin (readyState !== 1) würde alle Requests verwerfen.
