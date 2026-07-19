@@ -28,6 +28,7 @@
   "Description": "Stream Deck integration for Clockify, the most popular free time tracker available for an unlimited numbers of users for free.",
   "Icon": "Images/clockifyIcon",
   "URL": "https://duerrenberger.dev",
+  "UUID": "dev.duerrenberger.clockify",
   "Version": "1.17",
   "CodePathWin": "Windows/dev.duerrenberger.clockify.exe",
   "CodePathMac": "macOS/dev.duerrenberger.clockify",
@@ -43,8 +44,8 @@
       "MinimumVersion": "10.11"
     }
   ],
-  "SDKVersion": 2,
+  "SDKVersion": 3,
   "Software": {
-    "MinimumVersion": "4.9"
+    "MinimumVersion": "6.9"
   }
 }
