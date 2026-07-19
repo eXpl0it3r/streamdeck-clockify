@@ -293,6 +293,7 @@ public class ClockifyService(Logger logger)
                     q.QueryParameters.Name = projectName;
                     q.QueryParameters.StrictNameSearch = true;
                     q.QueryParameters.PageSize = MaxPageSize;
+                    q.QueryParameters.Archived = false;
 
                     if (clientId is not null)
                     {
@@ -336,6 +337,7 @@ public class ClockifyService(Logger logger)
                 {
                     q.QueryParameters.Name = clientName;
                     q.QueryParameters.PageSize = MaxPageSize;
+                    q.QueryParameters.Archived = "false";
                 });
             
             return clientResponse?.FirstOrDefault();

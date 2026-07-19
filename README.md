@@ -45,6 +45,7 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
 - Why am I not seeing the running timer on my button?
   - Make sure you haven't set a title, as this will override any other content
   - Make sure the API Key, Workspace name and optional the project and timer name
+  - Make sure that for projects with the same name, different clients are set
 - Why are my tags missing on the timer?
   - Make sure the tags have been created through the web app, as the plugin doesn't create them
   - Make sure the tag names match and tags with commas (WHY!?!) are escape with a backslash, e.g. `tag1,tag\,2,tag3`
