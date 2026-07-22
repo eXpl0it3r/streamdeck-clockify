@@ -6,7 +6,8 @@ This plugin allows you to track, start and stop Clockify timers on your [Elgato 
 
 ## Download
 
-Until the plugin is available in the [Stream Deck Store](https://apps.elgato.com/plugins), you can download a copy from the [GitHub release pages](https://github.com/eXpl0it3r/streamdeck-clockify/releases/latest).
+You can get the plugin directly on the [Elgato Marketplace](https://marketplace.elgato.com/product/clockify-64a23b82-7806-4c4a-85a5-162a03e51544)!  
+For new releases it usually takes 1-2 days until they're approved. In the meantime you can grab a copy from the [GitHub release pages](https://github.com/eXpl0it3r/streamdeck-clockify/releases/latest).
 
 ## Setup
 
