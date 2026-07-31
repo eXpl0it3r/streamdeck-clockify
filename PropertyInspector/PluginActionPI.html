@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
     <head>
         <meta charset="utf-8" />
@@ -7,6 +7,11 @@
         <meta name=apple-mobile-web-app-status-bar-style content=black>
         <title>Clockify Settings</title>
         <link rel="stylesheet" href="sdpi.css">
+        <style>
+            .cf-row select, .cf-row input.cf-text { flex: 1 1 auto; }
+            .cf-toggle { width: 28px; min-width: 28px; margin-left: 4px; cursor: pointer; }
+            .cf-hidden { display: none !important; }
+        </style>
         <script src="sdtools.common.js"></script>
     </head>
     <body>
@@ -15,18 +20,39 @@
                 <div class="sdpi-item-label">API Key</div>
                 <input class="sdpi-item-value sdProperty" id="apiKey" value="" pattern="[A-Za-z0-9]+" placeholder="Enter your Private API Key" oninput="setSettings()" required>
             </div>
+
             <div class="sdpi-item">
-                <div class="sdpi-item-label">Workspace Name</div>
-                <input class="sdpi-item-value sdProperty" id="workspaceName" value="" placeholder="Enter the name of the Workspace" oninput="setSettings()" required>
+                <button class="sdpi-item-value" id="cfRefresh">Listen aus Clockify aktualisieren</button>
             </div>
-            <div class="sdpi-item">
-                <div class="sdpi-item-label">Project Name</div>
-                <input class="sdpi-item-value sdProperty" id="projectName" value="" placeholder="Enter the name of the Project" oninput="setSettings()">
+
+            <div class="sdpi-item cf-row">
+                <div class="sdpi-item-label">Workspace</div>
+                <select class="sdpi-item-value" id="workspaceSelect"></select>
+                <input class="sdpi-item-value cf-text cf-hidden" id="workspaceText" type="text" placeholder="Workspace-Name">
+                <button class="cf-toggle" id="workspaceToggle" title="Liste/Freitext umschalten">&#9998;</button>
             </div>
-            <div class="sdpi-item">
-                <div class="sdpi-item-label">Task Name</div>
-                <input class="sdpi-item-value sdProperty" id="taskName" value="" placeholder="Enter the name of the Project Task" oninput="setSettings()">
+
+            <div class="sdpi-item cf-row">
+                <div class="sdpi-item-label">Client</div>
+                <select class="sdpi-item-value" id="clientSelect"></select>
+                <input class="sdpi-item-value cf-text cf-hidden" id="clientText" type="text" placeholder="Client-Name (optional)">
+                <button class="cf-toggle" id="clientToggle" title="Liste/Freitext umschalten">&#9998;</button>
             </div>
+
+            <div class="sdpi-item cf-row">
+                <div class="sdpi-item-label">Projekt</div>
+                <select class="sdpi-item-value" id="projectSelect"></select>
+                <input class="sdpi-item-value cf-text cf-hidden" id="projectText" type="text" placeholder="Projekt-Name">
+                <button class="cf-toggle" id="projectToggle" title="Liste/Freitext umschalten">&#9998;</button>
+            </div>
+
+            <div class="sdpi-item cf-row">
+                <div class="sdpi-item-label">Task</div>
+                <select class="sdpi-item-value" id="taskSelect"></select>
+                <input class="sdpi-item-value cf-text cf-hidden" id="taskText" type="text" placeholder="Task-Name (neu wird angelegt)">
+                <button class="cf-toggle" id="taskToggle" title="Liste/Freitext umschalten">&#9998;</button>
+            </div>
+
             <div class="sdpi-item">
                 <div class="sdpi-item-label">Timer Name</div>
                 <input class="sdpi-item-value sdProperty" id="timerName" value="" placeholder="Enter the name of the Timer" oninput="setSettings()">
@@ -47,10 +73,6 @@
             <div type="group" class="sdpi-item" id="advanced">
                 <div class="sdpi-item-label">Advanced</div>
                 <div class="sdpi-item-group" id="messagegroup_items">
-                    <div class="sdpi-item">
-                        <div class="sdpi-item-label">Client Name</div>
-                        <input class="sdpi-item-value sdProperty" id="clientName" value="" placeholder="Enter the name of the Client" oninput="setSettings()">
-                    </div>
                     <div class="sdpi-item">
                         <div class="sdpi-item-label">Title Format</div>
                         <div class="sdpi-item-value textarea">
@@ -73,6 +95,17 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Versteckte Quell-Felder: von EasyPI persistiert, von clockify-pi.js gepflegt -->
+            <input class="sdProperty cf-hidden" id="workspaceName" type="text">
+            <input class="sdProperty cf-hidden" id="clientName" type="text">
+            <input class="sdProperty cf-hidden" id="projectName" type="text">
+            <input class="sdProperty cf-hidden" id="taskName" type="text">
+            <input class="sdProperty sdCheckbox cf-hidden" id="workspaceManual" type="checkbox">
+            <input class="sdProperty sdCheckbox cf-hidden" id="clientManual" type="checkbox">
+            <input class="sdProperty sdCheckbox cf-hidden" id="projectManual" type="checkbox">
+            <input class="sdProperty sdCheckbox cf-hidden" id="taskManual" type="checkbox">
         </div>
+        <script src="clockify-pi.js"></script>
     </body>
 </html>
