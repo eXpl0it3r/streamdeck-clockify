@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using BarRaider.SdTools;
+using Newtonsoft.Json.Linq;
 
 // ReSharper disable AsyncVoidMethod - Async overridse for SdTools
 namespace Clockify;
@@ -100,11 +101,23 @@ public class ToggleAction : KeypadBase
         Tools.AutoPopulateSettings(_settings, payload.Settings);
         _logger.LogInfo($"Settings Received: {_settings}");
         await _clockifyService.UpdateSettingsAsync(_settings);
+        await SendOptionsToPropertyInspectorAsync();
+    }
+
+    public override async void PropertyInspectorDidAppear()
+    {
+        await SendOptionsToPropertyInspectorAsync();
     }
 
     public override void ReceivedGlobalSettings(ReceivedGlobalSettingsPayload payload)
     {
         _logger.LogInfo("Global Settings Received");
+    }
+
+    private async Task SendOptionsToPropertyInspectorAsync()
+    {
+        var options = _clockifyService.GetAvailableOptions();
+        await Connection.SendToPropertyInspectorAsync(JObject.FromObject(options));
     }
 
     private async Task<bool> TryInitializingClockifyContext()

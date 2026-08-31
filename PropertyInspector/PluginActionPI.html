@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
     <head>
         <meta charset="utf-8" />
@@ -11,21 +11,32 @@
     </head>
     <body>
         <div class="sdpi-wrapper">
+            <!-- Hidden inputs store workspace/project/task names for sdtools.common.js -->
+            <input type="hidden" class="sdProperty" id="workspaceName">
+            <input type="hidden" class="sdProperty" id="projectName">
+            <input type="hidden" class="sdProperty" id="taskName">
+
             <div class="sdpi-item">
                 <div class="sdpi-item-label">API Key</div>
-                <input class="sdpi-item-value sdProperty" id="apiKey" value="" pattern="[A-Za-z0-9]+" placeholder="Enter your Private API Key" oninput="setSettings()" required>
+                <input class="sdpi-item-value sdProperty" id="apiKey" value="" pattern="[A-Za-z0-9]+" placeholder="Enter your Private API Key" oninput="setSettings();" required>
             </div>
             <div class="sdpi-item">
-                <div class="sdpi-item-label">Workspace Name</div>
-                <input class="sdpi-item-value sdProperty" id="workspaceName" value="" placeholder="Enter the name of the Workspace" oninput="setSettings()" required>
+                <div class="sdpi-item-label">Workspace</div>
+                <select class="sdpi-item-value" id="workspaceSelect" onchange="onWorkspaceChange()">
+                    <option value="">-- Select Workspace --</option>
+                </select>
             </div>
             <div class="sdpi-item">
-                <div class="sdpi-item-label">Project Name</div>
-                <input class="sdpi-item-value sdProperty" id="projectName" value="" placeholder="Enter the name of the Project" oninput="setSettings()">
+                <div class="sdpi-item-label">Project</div>
+                <select class="sdpi-item-value" id="projectSelect" onchange="onProjectChange()">
+                    <option value="">-- No Project --</option>
+                </select>
             </div>
             <div class="sdpi-item">
-                <div class="sdpi-item-label">Task Name</div>
-                <input class="sdpi-item-value sdProperty" id="taskName" value="" placeholder="Enter the name of the Project Task" oninput="setSettings()">
+                <div class="sdpi-item-label">Task</div>
+                <select class="sdpi-item-value" id="taskSelect" onchange="onTaskChange()">
+                    <option value="">-- No Task --</option>
+                </select>
             </div>
             <div class="sdpi-item">
                 <div class="sdpi-item-label">Timer Name</div>
@@ -69,10 +80,11 @@
                     </div>
                     <div class="sdpi-item">
                         <div class="sdpi-item-label">Server Url</div>
-                        <input class="sdpi-item-value sdProperty" id="serverUrl" value="https://api.clockify.me/api/v1" placeholder="Enter the ULR of the Server" oninput="setSettings()" required>
+                        <input class="sdpi-item-value sdProperty" id="serverUrl" value="https://api.clockify.me/api/v1" placeholder="Enter the URL of the Server" oninput="setSettings();" required>
                     </div>
                 </div>
             </div>
         </div>
+
     </body>
 </html>

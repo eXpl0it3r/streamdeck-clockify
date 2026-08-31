@@ -25,9 +25,16 @@ public class ClockifyService(Logger logger)
     private List<string> _tags = [];
     private TaskDtoV1 _task = new();
 
+    private List<string> _allWorkspaceNames = [];
+    private List<string> _allProjectNames = [];
+    private List<string> _allTaskNames = [];
+
     public bool IsValid => _clockifyClient is not null
                            && !string.IsNullOrWhiteSpace(_settings.WorkspaceName)
                            && _workspace is not null;
+
+    public AvailableOptions GetAvailableOptions() =>
+        new() { WorkspaceNames = _allWorkspaceNames, ProjectNames = _allProjectNames, TaskNames = _allTaskNames };
 
     public async Task<bool> ToggleTimerAsync()
     {
@@ -211,24 +218,39 @@ public class ClockifyService(Logger logger)
         _project = null;
         _tags = [];
         _task = null;
-        
+        _allWorkspaceNames = [];
+        _allProjectNames = [];
+        _allTaskNames = [];
+
         try
         {
             var workspaces = await _clockifyClient.V1.Workspaces.GetAsync();
+            _allWorkspaceNames = workspaces?.Select(w => w.Name).ToList() ?? [];
             _workspace = workspaces?.SingleOrDefault(w => w.Name == _settings.WorkspaceName);
 
             if (_workspace is not null)
             {
+                var allProjects = await _clockifyClient.V1.Workspaces[_workspace.Id].Projects
+                    .GetAsync(q => q.QueryParameters.PageSize = MaxPageSize);
+                _allProjectNames = allProjects?.Select(p => p.Name).ToList() ?? [];
+
                 var client = await FindMatchingClientAsync(_workspace.Id, _settings.ClientName);
                 _project = await FindMatchingProjectAsync(_workspace.Id, _settings.ProjectName, client?.Id);
                 _tags = await FindMatchingTagsAsync(_workspace.Id, _settings.Tags);
 
                 if (_project is not null)
                 {
-                    _task = await FindMatchingTaskAsync(_workspace.Id, _project.Id, _settings.TaskName);
+                    var allTasks = await _clockifyClient.V1.Workspaces[_workspace.Id].Projects[_project.Id].Tasks
+                        .GetAsync(q =>
+                        {
+                            q.QueryParameters.PageSize = MaxPageSize;
+                            q.QueryParameters.IsActive = true;
+                        });
+                    _allTaskNames = allTasks?.Select(t => t.Name).ToList() ?? [];
+                    _task = allTasks?.FirstOrDefault(t => t.Name == _settings.TaskName);
                 }
             }
-            
+
             logger.LogInfo("Reloading cache successful");
         }
         catch (Exception exception) when (exception is ApiException or HttpRequestException)
