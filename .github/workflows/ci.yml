@@ -20,7 +20,7 @@ jobs:
         - { name: .NET 10, version: '10.0.x' }
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup .NET ${{ matrix.dotnet.version }} SDK
         id: setup-dotnet
         uses: actions/setup-dotnet@v5
