@@ -1,0 +1,17 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "dependencyDashboard": false,
+  "minimumReleaseAge": "7 days",
+  "packageRules": [
+    {
+      "description": "No cooldown for our own packages",
+      "matchPackageNames": [
+        "ClockifyClient"
+      ],
+      "minimumReleaseAge": "0 days"
+    }
+  ]
+}
