@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using BarRaider.SdTools;
+using Newtonsoft.Json.Linq;
 
 // ReSharper disable AsyncVoidMethod - Async overridse for SdTools
 namespace Clockify;
@@ -9,23 +11,22 @@ namespace Clockify;
 public class ToggleAction : KeypadBase
 {
     private readonly Logger _logger;
-    private readonly PluginSettings _settings;
-    
-    private readonly ButtonState _buttonState;
     private readonly ClockifyService _clockifyService;
+
+    private PluginSettings _settings;
+    private int _tickRunning;
+    private uint? _shownState;
+    private string _shownTitle;
 
     public ToggleAction(ISDConnection connection, InitialPayload payload)
         : base(connection, payload)
     {
         _logger = new Logger(BarRaider.SdTools.Logger.Instance);
-        _settings = new PluginSettings();
-        
-        _buttonState = new ButtonState();
         _clockifyService = new ClockifyService(_logger);
 
-        Tools.AutoPopulateSettings(_settings, payload.Settings);
-
         _logger.LogInfo("Creating ToggleAction...");
+
+        ApplySettings(payload.Settings);
     }
 
     public override void Dispose()
@@ -42,64 +43,54 @@ public class ToggleAction : KeypadBase
     {
         _logger.LogInfo("Key Released");
 
-        if (!_clockifyService.IsValid || !await _clockifyService.ToggleTimerAsync())
+        var result = await _clockifyService.ToggleTimerAsync();
+
+        if (result is ToggleResult.Failed or ToggleResult.RateLimited)
         {
             await Connection.ShowAlert();
         }
 
-        // Immediately update the button
-        _buttonState.Ticks = _settings.RefreshRate;
-        OnTick();
+        await StoreResolvedIdsAsync();
+
+        // The Stream Deck flips the button state on key press by itself
+        _shownState = null;
+        await RenderAsync();
     }
 
+    /// <summary>
+    /// Called every second. The timer is counted locally, Clockify is only asked as often as the refresh rate allows.
+    /// </summary>
     public override async void OnTick()
     {
-        if (!await TryInitializingClockifyContext())
+        // A slow request shouldn't pile up ticks
+        if (Interlocked.Exchange(ref _tickRunning, 1) == 1)
         {
             return;
         }
 
-        if (_buttonState.Ticks >= _settings.RefreshRate)
+        try
         {
-            var timer = await _clockifyService.FetchRunningTimerAsync();
-            var timerTime = string.Empty;
-
-            if (timer?.TimeInterval?.Start != null)
+            if (await _clockifyService.TryResolveAsync(userInitiated: false))
             {
-                var timeDifference = DateTime.UtcNow - timer.TimeInterval.Start.Value.UtcDateTime;
-                timerTime = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
-                
-                await Connection.SetStateAsync(DisplayState.Active);
-                _buttonState.LastStart = timer.TimeInterval.Start.Value.UtcDateTime;
-            }
-            else
-            {
-                await Connection.SetStateAsync(DisplayState.Inactive);
-                _buttonState.LastStart = null;
+                await StoreResolvedIdsAsync();
+                await _clockifyService.RefreshAsync();
             }
 
-            await Connection.SetTitleAsync(TextFormatter.CreateTimerText(_settings, timerTime));
-            _buttonState.Ticks = 0;
-            return;
+            await RenderAsync();
         }
-
-        if (_buttonState.LastStart.HasValue)
+        catch (Exception exception)
         {
-            var timeDifference = DateTime.UtcNow - _buttonState.LastStart.Value;
-            var timerTime = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
-                
-            await Connection.SetStateAsync(DisplayState.Active);
-            await Connection.SetTitleAsync(TextFormatter.CreateTimerText(_settings, timerTime));
+            _logger.LogError($"Updating button failed: {exception.Message}");
         }
-
-        _buttonState.Ticks++;
+        finally
+        {
+            Interlocked.Exchange(ref _tickRunning, 0);
+        }
     }
 
-    public override async void ReceivedSettings(ReceivedSettingsPayload payload)
+    public override void ReceivedSettings(ReceivedSettingsPayload payload)
     {
-        Tools.AutoPopulateSettings(_settings, payload.Settings);
-        _logger.LogInfo($"Settings Received: {_settings}");
-        await _clockifyService.UpdateSettingsAsync(_settings);
+        ApplySettings(payload.Settings);
     }
 
     public override void ReceivedGlobalSettings(ReceivedGlobalSettingsPayload payload)
@@ -107,15 +98,66 @@ public class ToggleAction : KeypadBase
         _logger.LogInfo("Global Settings Received");
     }
 
-    private async Task<bool> TryInitializingClockifyContext()
+    private void ApplySettings(JObject settings)
     {
-        if (_clockifyService.IsValid)
-        {
-            return true;   
-        }
-        
-        await _clockifyService.UpdateSettingsAsync(_settings);
+        _settings = settings?.ToObject<PluginSettings>() ?? new PluginSettings();
+        _logger.LogInfo($"Settings Received: {_settings}");
 
-        return _clockifyService.IsValid;
+        _clockifyService.UpdateSettings(_settings);
+    }
+
+    /// <summary>
+    /// Stores the looked up IDs in the button settings, so the next start of the plugin doesn't need to look them up.
+    /// The property inspector drops them whenever it saves, so they're stored again if needed.
+    /// </summary>
+    private async Task StoreResolvedIdsAsync()
+    {
+        var resolvedIds = _clockifyService.ResolvedIds;
+
+        if (resolvedIds is null
+            || (_settings.ResolvedIds?.Fingerprint == resolvedIds.Fingerprint && _settings.ResolvedIds.TaskId == resolvedIds.TaskId))
+        {
+            return;
+        }
+
+        _settings.ResolvedIds = new ResolvedIds
+        {
+            Fingerprint = resolvedIds.Fingerprint,
+            UserId = resolvedIds.UserId,
+            WorkspaceId = resolvedIds.WorkspaceId,
+            ProjectId = resolvedIds.ProjectId,
+            TaskId = resolvedIds.TaskId,
+            TagIds = [..resolvedIds.TagIds]
+        };
+
+        await Connection.SetSettingsAsync(JObject.FromObject(_settings));
+    }
+
+    private async Task RenderAsync()
+    {
+        var timer = _clockifyService.GetRunningTimer();
+        var timerTime = string.Empty;
+        var state = DisplayState.Inactive;
+
+        if (timer?.Start is not null)
+        {
+            var elapsed = DateTimeOffset.UtcNow - timer.Start.Value;
+            timerTime = $"{(int)elapsed.TotalHours:d2}:{elapsed.Minutes:d2}:{elapsed.Seconds:d2}";
+            state = DisplayState.Active;
+        }
+
+        var title = TextFormatter.CreateTimerText(_settings, timerTime);
+
+        if (_shownState != state)
+        {
+            await Connection.SetStateAsync(state);
+            _shownState = state;
+        }
+
+        if (_shownTitle != title)
+        {
+            await Connection.SetTitleAsync(title);
+            _shownTitle = title;
+        }
     }
 }

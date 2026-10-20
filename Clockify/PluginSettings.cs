@@ -20,8 +20,9 @@ public class PluginSettings
         TitleFormat = settings.TitleFormat;
         RefreshRate = settings.RefreshRate;
         ServerUrl = settings.ServerUrl;
+        ResolvedIds = settings.ResolvedIds;
     }
-    
+
     [JsonProperty(PropertyName = "apiKey")]
     public string ApiKey { get; set; } = string.Empty;
 
@@ -49,11 +50,21 @@ public class PluginSettings
     [JsonProperty(PropertyName = "titleFormat")]
     public string TitleFormat { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Seconds between two checks for timers started or stopped outside the Stream Deck, 0 only checks on key press.
+    /// The default stays well within the Free plan's 30 requests per hour.
+    /// </summary>
     [JsonProperty(PropertyName = "refreshRate")]
-    public uint RefreshRate { get; set; } = 5;
-    
+    public uint RefreshRate { get; set; } = 300;
+
     [JsonProperty(PropertyName = "serverUrl")]
     public string ServerUrl { get; set; } = "https://api.clockify.me/api";
+
+    /// <summary>
+    /// The Clockify IDs found for the names above, stored so a restart doesn't have to look them up again.
+    /// </summary>
+    [JsonProperty(PropertyName = "resolvedIds")]
+    public ResolvedIds ResolvedIds { get; set; }
 
     public override string ToString()
     {

@@ -23,6 +23,7 @@ For new releases it usually takes 1-2 days until they're approved. In the meanti
   - **Billable** *(optional)* Check or uncheck the box to run the timer as billable or non-billable 
 - **Advanced**
   - **Client Name:** *(optional)* Set the client name assigned to the specified project
+    - Note: If a client name is set, it has to exist, otherwise the button won't start any timer
   - **Title Format:** *(optional)* Specify the format for the title to be displayed on the button
     - This can include any of:
       - `{workspaceName}` : The workspace name
@@ -31,11 +32,42 @@ For new releases it usually takes 1-2 days until they're approved. In the meanti
       - `{timerName}` : The timer name
       - `{clientName}` : The client name
       - `{timer}` : The current timer value when running. Blank when not running
-  - **Refresh Rate:** *(required)* Define how often the API is being called, the *default* is 5 Seconds 
+  - **Refresh Rate:** *(required)* Define how often the plugin checks for timers started or stopped outside of the Stream Deck, the *default* is 5 Minutes
+    - Your own key presses are shown right away, the refresh rate only matters for changes made in the web app, the desktop app or on your phone
+    - "Only on key press" never checks in the background
+    - Keep in mind, that the Free plan only allows 30 API requests per hour, see [Clockify Free Plan](#clockify-free-plan) below
   - **Server Url:** *(required)* Change from the *default* URL to the API URL of your own/company instance
     - Note: Starting with V1.11 the URL should *not* end with `/v1` 
 
 https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-8279-579840ce0a6b.mp4
+
+## Clockify Free Plan
+
+**tl;dr:** On the Free plan, keep the refresh rate at 5 minutes or slower, or set it to "Only on key press".
+
+Since April 2026, Clockify limits newly created workspaces on the Free plan to [30 API requests per hour](https://clockify.me/help/getting-started/webhook-and-api-limitations), for the whole workspace. Paid plans keep the old limit of 50 requests per second. Note that the limit is shared with everyone in the workspace and every other integration using an API key, so the plugin can't use all 30 requests for itself.
+
+To stay within the limit, the plugin:
+
+- Counts the timer on the button locally and only asks Clockify as often as the refresh rate says
+- Shares one check for the running timer between all buttons using the same API key and workspace
+- Stores the IDs of the workspace, project, task and tags in the button settings, so restarting the Stream Deck doesn't look them up again
+- Needs a single request to start or stop a timer, plus one more if the last check is older than a minute
+- Waits until you've stopped typing in the settings, before looking anything up
+- Retries a failed setup (e.g. a misspelled workspace name) after 1 minute, then doubles the delay up to 30 minutes, instead of every second
+
+If Clockify still answers with "Too many requests", the plugin pauses all requests for that API key until Clockify allows them again (5 minutes, if Clockify doesn't say how long), and checks at most every 5 minutes for the rest of the session. While paused, pressing a button shows the yellow triangle.
+
+Roughly what the plugin needs per hour:
+
+| Setup | Requests per hour |
+|---|---|
+| Refresh rate 5 minutes, any number of buttons in the same workspace | 12 |
+| "Only on key press" | 1-2 per key press |
+| Changing the button settings | 2-6 once, for the lookups |
+| Restart of the Stream Deck | 0 for the lookups, 1 for the running timer |
+
+The plugin log lists every request together with how many were sent in the last hour, see below where to find it.
 
 ## FAQ / Troubleshooting
 
@@ -46,6 +78,7 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
 - Why am I not seeing the running timer on my button?
   - Make sure you haven't set a title, as this will override any other content
   - Make sure the API Key, Workspace name and optional the project and timer name
+  - If the settings were wrong, the plugin waits a bit before trying again, pressing the button tries right away
   - Make sure that for projects with the same name, different clients are set
 - Why are my tags missing on the timer?
   - Make sure the tags have been created through the web app, as the plugin doesn't create them
@@ -53,8 +86,13 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
 - Why does the timer always start with a negative number?
   - This can happen when your local computer time isn't in sync with the Clockify server time
   - Make sure you synchronize your clock with a time-server
-- Why does it always take some seconds to show the timer running?
-  - Due to API rate limits, there's some magical caching going on, leading to certain delays 
+- Why does it take a while until the button shows a timer I started in the web app?
+  - The plugin only checks for changes made outside the Stream Deck as often as the refresh rate allows, which is every 5 minutes by default
+  - Pressing the button always checks first, if the last check is older than a minute
+- Why do I get a yellow triangle after a while, even though the settings are correct?
+  - You likely ran into Clockify's API limit, see [Clockify Free Plan](#clockify-free-plan)
+  - Check the log for "rate limit reached", it tells you until when the requests are paused
+  - Set a slower refresh rate and keep in mind, that other integrations in your workspace use the same limit
 - Why can't I select my Workspace and Project in a dropdown menu?
   - Because I was lazy 😅
 - Where can I find the logs?
