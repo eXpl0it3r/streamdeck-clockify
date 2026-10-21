@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 using BarRaider.SdTools;
 
 // ReSharper disable AsyncVoidMethod - Async overridse for SdTools
@@ -26,6 +25,8 @@ public class ToggleAction : KeypadBase
         Tools.AutoPopulateSettings(_settings, payload.Settings);
 
         _logger.LogInfo("Creating ToggleAction...");
+
+        _clockifyService.UpdateSettings(_settings);
     }
 
     public override void Dispose()
@@ -42,7 +43,7 @@ public class ToggleAction : KeypadBase
     {
         _logger.LogInfo("Key Released");
 
-        if (!_clockifyService.IsValid || !await _clockifyService.ToggleTimerAsync())
+        if (!await _clockifyService.ToggleTimerAsync())
         {
             await Connection.ShowAlert();
         }
@@ -54,7 +55,7 @@ public class ToggleAction : KeypadBase
 
     public override async void OnTick()
     {
-        if (!await TryInitializingClockifyContext())
+        if (!await _clockifyService.TryResolveAsync(userInitiated: false))
         {
             return;
         }
@@ -95,27 +96,15 @@ public class ToggleAction : KeypadBase
         _buttonState.Ticks++;
     }
 
-    public override async void ReceivedSettings(ReceivedSettingsPayload payload)
+    public override void ReceivedSettings(ReceivedSettingsPayload payload)
     {
         Tools.AutoPopulateSettings(_settings, payload.Settings);
         _logger.LogInfo($"Settings Received: {_settings}");
-        await _clockifyService.UpdateSettingsAsync(_settings);
+        _clockifyService.UpdateSettings(_settings);
     }
 
     public override void ReceivedGlobalSettings(ReceivedGlobalSettingsPayload payload)
     {
         _logger.LogInfo("Global Settings Received");
-    }
-
-    private async Task<bool> TryInitializingClockifyContext()
-    {
-        if (_clockifyService.IsValid)
-        {
-            return true;   
-        }
-        
-        await _clockifyService.UpdateSettingsAsync(_settings);
-
-        return _clockifyService.IsValid;
     }
 }

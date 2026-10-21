@@ -20,17 +20,4 @@ public static class SettingsValidator
     {
         settings.ServerUrl = settings.ServerUrl?.Replace("/api/v1", "/api");
     }
-
-    public static bool HasChanged(PluginSettings left, PluginSettings right)
-    {
-        return left.ApiKey != right.ApiKey
-            || left.WorkspaceName != right.WorkspaceName
-            || left.ProjectName != right.ProjectName
-            || left.TaskName != right.TaskName
-            || left.TimerName != right.TimerName
-            || left.Tags != right.Tags
-            || left.ClientName != right.ClientName
-            || left.Billable != right.Billable
-            || left.ServerUrl != right.ServerUrl;
-    }
 }

@@ -13,55 +13,77 @@ public class ClockifyService(Logger logger)
 {
     private const int MaxPageSize = 5000;
 
-    private readonly SemaphoreSlim _cacheLock = new SemaphoreSlim(1, 1);
+    // Typing in the property inspector sends the settings on every key stroke
+    private static readonly TimeSpan SettingsDebounce = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan MinRetryDelay = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(30);
+
+    private readonly TimeSpan _timeOut = TimeSpan.FromSeconds(20);
+    private readonly SemaphoreSlim _cacheLock = new(1, 1);
 
     private PluginSettings _settings = new();
+    private string _fingerprint = string.Empty;
+    private bool _settingsValid;
 
     private ClockifyConnection _connection;
-    private UserDtoV1 _currentUser = new();
-    private WorkspaceDtoV1 _workspace = new();
-    private ProjectDtoV1 _project = new();
-    private List<string> _tags = [];
-    private TaskDtoV1 _task = new();
+    private ResolvedIds _resolvedIds;
 
-    public bool IsValid => _connection is not null
-                           && !string.IsNullOrWhiteSpace(_settings.WorkspaceName)
-                           && _workspace is not null;
+    private DateTimeOffset _nextResolveAttempt = DateTimeOffset.MinValue;
+    private TimeSpan _retryDelay = MinRetryDelay;
 
-    public async Task<bool> ToggleTimerAsync()
+    public bool IsValid => _resolvedIds is not null;
+
+    public void UpdateSettings(PluginSettings settings)
     {
-        logger.LogInfo("Toggling timer...");
+        settings = new PluginSettings(settings);
+        SettingsValidator.MigrateServerUrl(settings);
 
-        await _cacheLock.WaitAsync();
+        var fingerprint = ResolvedIds.CreateFingerprint(settings);
+        var fingerprintChanged = fingerprint != _fingerprint;
+
+        _settings = settings;
+        _fingerprint = fingerprint;
+
+        if (!fingerprintChanged)
+        {
+            return;
+        }
+
+        logger.LogInfo($"Updating settings: {settings}");
+
+        var validation = SettingsValidator.Validate(settings);
+        _settingsValid = validation.IsValid;
+        if (!_settingsValid)
+        {
+            logger.LogError($"Updating settings failed, settings validation failed: {validation.Error}");
+        }
+
+        _connection = _settingsValid ? ClockifyConnection.Get(settings.ApiKey, settings.ServerUrl, logger) : null;
+        _resolvedIds = null;
+        _retryDelay = MinRetryDelay;
+        _nextResolveAttempt = DateTimeOffset.UtcNow + SettingsDebounce;
+    }
+
+    public async Task<bool> TryResolveAsync(bool userInitiated)
+    {
+        if (IsValid)
+        {
+            return true;
+        }
+
+        if (!_settingsValid || (!userInitiated && DateTimeOffset.UtcNow < _nextResolveAttempt))
+        {
+            return false;
+        }
+
+        if (!await _cacheLock.WaitAsync(_timeOut))
+        {
+            return false;
+        }
+
         try
         {
-            if (!IsValid)
-            {
-                logger.LogError($"Toggling trimer failed, invalid settings: {_settings}");
-                return false;
-            }
-
-            var runningTimer = await StopRunningTimerAsync();
-
-            if (runningTimer is not null)
-            {
-                logger.LogInfo("Toggling trimer successful, timer has been stopped");
-                return true;
-            }
-
-            try
-            {
-                var timeEntryRequest = await CreateTimeEntryRequestAsync();
-                await _connection.SendAsync("start timer", c => c.V1.Workspaces[_workspace.Id].TimeEntries.PostAsync(timeEntryRequest));
-
-                logger.LogInfo("Toggling trimer successful, timer has been started");
-                return true;
-            }
-            catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
-            {
-                logger.LogError($"Toggling trimer failed, TimeEntry creation failed: {exception.Message}");
-                return false;
-            }
+            return await ResolveAsync();
         }
         finally
         {
@@ -71,12 +93,19 @@ public class ClockifyService(Logger logger)
 
     public async Task<TimeEntryWithRatesDtoV1> FetchRunningTimerAsync()
     {
-        logger.LogInfo("Fetching running timer...");
-        
-        await _cacheLock.WaitAsync();
+        if (!IsValid || !await _cacheLock.WaitAsync(_timeOut))
+        {
+            return null;
+        }
+
         try
         {
             return await GetRunningTimerAsync();
+        }
+        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
+        {
+            logger.LogError($"Fetching running timer failed: {exception.Message}");
+            return null;
         }
         finally
         {
@@ -84,50 +113,33 @@ public class ClockifyService(Logger logger)
         }
     }
 
-    public async Task UpdateSettingsAsync(PluginSettings settings)
+    public async Task<bool> ToggleTimerAsync()
     {
-        logger.LogInfo("Updating settings...");
-        
-        await _cacheLock.WaitAsync();
+        logger.LogInfo("Toggling timer...");
+
+        if (!await _cacheLock.WaitAsync(_timeOut))
+        {
+            return false;
+        }
+
         try
         {
-            SettingsValidator.MigrateServerUrl(settings);
-            var cacheInvalidationRequired = SettingsValidator.HasChanged(_settings, settings);
-
-
-            // Do we need to recreate the client?
-            if (!IsValid || _settings.ApiKey != settings.ApiKey || _settings.ServerUrl != settings.ServerUrl)
+            if (!IsValid && (!_settingsValid || !await ResolveAsync()))
             {
-                logger.LogInfo("Updating settings, recreate Clockify client");
-
-                var validation = SettingsValidator.Validate(settings);
-
-                if (!validation.IsValid)
-                {
-                    logger.LogError($"Updating settings failed, settings validation failed: {validation.Error}");
-                    return;
-                }
-
-                _connection = ClockifyConnection.Get(settings.ApiKey, settings.ServerUrl, logger);
-
-                if (!await TestConnectionAsync())
-                {
-                    logger.LogError("Updating settings failed, invalid server URL or API key");
-                    _connection = null;
-                    _currentUser = new UserDtoV1();
-                    return;
-                }
-
-                logger.LogInfo("Updating settings successful, connection to Clockify established");
-                cacheInvalidationRequired = true;
+                logger.LogError($"Toggling timer failed, invalid settings: {_settings}");
+                return false;
             }
 
-            _settings = new PluginSettings(settings);
+            var runningTimer = await GetRunningTimerAsync();
 
-            if (cacheInvalidationRequired)
-            {
-                await ReloadCacheAsync();
-            }
+            return runningTimer is not null
+                ? await StopTimerAsync(runningTimer)
+                : await StartTimerAsync();
+        }
+        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
+        {
+            logger.LogError($"Toggling timer failed: {exception.Message}");
+            return false;
         }
         finally
         {
@@ -137,119 +149,14 @@ public class ClockifyService(Logger logger)
 
     private async Task<TimeEntryWithRatesDtoV1> GetRunningTimerAsync()
     {
-        if (!IsValid)
-        {
-            logger.LogError($"Fetching running timer failed, invalid settings: {_settings}");
-            return null;
-        }
+        var timeEntries = await _connection.SendAsync("get running timer",
+            c => c.V1.Workspaces[_resolvedIds.WorkspaceId].User[_resolvedIds.UserId].TimeEntries.GetAsync(p => p.QueryParameters.InProgress = "true"));
 
-        try
-        {
-            var timeEntries = await _connection.SendAsync("get running timer",
-                c => c.V1.Workspaces[_workspace.Id].User[_currentUser.Id].TimeEntries.GetAsync(p => p.QueryParameters.InProgress = "true"));
-
-            if (string.IsNullOrEmpty(_settings.ProjectName))
-            {
-                return timeEntries?.FirstOrDefault(t => string.IsNullOrEmpty(_settings.TimerName) || t.Description == _settings.TimerName);
-            }
-
-            if (_project is null)
-            {
-                logger.LogError($"Fetching running timer failed, no project in workspace matching {_settings.ProjectName}");
-                return null;
-            }
-
-            return timeEntries?.FirstOrDefault(t => t.ProjectId == _project.Id
-                                                    && (string.IsNullOrEmpty(_settings.TimerName) || t.Description == _settings.TimerName)
-                                                    && (string.IsNullOrEmpty(_settings.TaskName) || string.IsNullOrEmpty(_task?.Id) || t.TaskId == _task.Id)
-                                                    && ((t.TagIds is null && _tags is null) || (t.TagIds is not null && _tags is not null && t.TagIds.OrderBy(s => s, StringComparer.InvariantCulture)
-                                                                                                                                              .SequenceEqual(_tags.OrderBy(s => s, StringComparer.InvariantCulture))))
-                                                    && t.Billable == _settings.Billable);
-        }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
-        {
-            logger.LogError($"Fetching running timer failed, TimeEntry request failed: {exception.Message}");
-            return null;
-        }
+        return timeEntries?.FirstOrDefault(Matches);
     }
 
-    private async Task<CreateTimeEntryRequest> CreateTimeEntryRequestAsync()
+    private async Task<bool> StopTimerAsync(TimeEntryWithRatesDtoV1 runningTimer)
     {
-        var timeEntryRequest = new CreateTimeEntryRequest
-        {
-            Description = _settings.TimerName ?? string.Empty,
-            Start = DateTimeOffset.UtcNow,
-            TagIds = _tags,
-            Billable = _settings.Billable
-        };
-
-        if (string.IsNullOrEmpty(_settings.ProjectName) || _project is null)
-        {
-            return timeEntryRequest;
-        }
-        
-        timeEntryRequest.ProjectId = _project.Id;
-
-        if (string.IsNullOrEmpty(_settings.TaskName))
-        {
-            return timeEntryRequest;
-        }
-        
-        var taskId = await FindOrCreateTaskAsync(_workspace.Id, _project.Id, _settings.TaskName);
-        if (taskId is not null)
-        {
-            timeEntryRequest.TaskId = taskId;
-        }
-
-        return timeEntryRequest;
-    }
-
-    private async Task ReloadCacheAsync()
-    {
-        _workspace = null;
-        _project = null;
-        _tags = [];
-        _task = null;
-        
-        try
-        {
-            _workspace = await _connection.FindWorkspaceAsync(_settings.WorkspaceName);
-
-            if (_workspace is not null)
-            {
-                var client = await FindMatchingClientAsync(_workspace.Id, _settings.ClientName);
-                _project = await FindMatchingProjectAsync(_workspace.Id, _settings.ProjectName, client?.Id);
-                _tags = await FindMatchingTagsAsync(_workspace.Id, _settings.Tags);
-
-                if (_project is not null)
-                {
-                    _task = await FindMatchingTaskAsync(_workspace.Id, _project.Id, _settings.TaskName);
-                }
-            }
-            
-            logger.LogInfo("Reloading cache successful");
-        }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
-        {
-            logger.LogWarn($"Reloading cache failed, unable to retrieve workspaces: {exception.Message}");
-        }
-    }
-
-    private async Task<TimeEntryWithRatesDtoV1> StopRunningTimerAsync()
-    {
-        if (!IsValid)
-        {
-            logger.LogError($"Stopping timer failed, invalid settings: {_settings}");
-            return null;
-        }
-
-        var runningTimer = await GetRunningTimerAsync();
-        if (runningTimer is null)
-        {
-            // No running timer
-            return null;
-        }
-
         var timerUpdate = new UpdateTimeEntryRequest
         {
             Billable = runningTimer.Billable,
@@ -261,145 +168,229 @@ public class ClockifyService(Logger logger)
             TagIds = runningTimer.TagIds
         };
 
-        try
-        {
-            await _connection.SendAsync("stop timer", c => c.V1.Workspaces[_workspace.Id].TimeEntries[runningTimer.Id].PutAsync(timerUpdate));
-            logger.LogInfo($"Stopping timer successful, timer in workspace {_settings.WorkspaceName}: {runningTimer.ProjectId}, {runningTimer.TaskId}, {runningTimer.Description}");
-        }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
-        {
-            logger.LogError($"Stopping time failed, timer in workspace {_settings.WorkspaceName}: {runningTimer.ProjectId}, {runningTimer.TaskId}, {runningTimer.Description}: {exception.Message}");
-        }
+        await _connection.SendAsync("stop timer",
+            c => c.V1.Workspaces[_resolvedIds.WorkspaceId].TimeEntries[runningTimer.Id].PutAsync(timerUpdate));
 
-        return runningTimer;
+        logger.LogInfo("Toggling timer successful, timer has been stopped");
+        return true;
     }
 
-    private async Task<ProjectDtoV1> FindMatchingProjectAsync(string workspaceId, string projectName, string clientId = null)
+    private async Task<bool> StartTimerAsync()
     {
-        if (string.IsNullOrEmpty(projectName))
+        if (!string.IsNullOrEmpty(_settings.TaskName) && string.IsNullOrEmpty(_resolvedIds.TaskId))
         {
-            return null;
+            _resolvedIds.TaskId = await CreateTaskAsync();
         }
-        
-        logger.LogInfo("Finding matching project...");
-        
+
+        var timeEntryRequest = new CreateTimeEntryRequest
+        {
+            Description = _settings.TimerName ?? string.Empty,
+            Start = DateTimeOffset.UtcNow,
+            TagIds = _resolvedIds.TagIds,
+            Billable = _settings.Billable,
+            ProjectId = _resolvedIds.ProjectId,
+            TaskId = _resolvedIds.TaskId
+        };
+
+        await _connection.SendAsync("start timer",
+            c => c.V1.Workspaces[_resolvedIds.WorkspaceId].TimeEntries.PostAsync(timeEntryRequest));
+
+        logger.LogInfo("Toggling timer successful, timer has been started");
+        return true;
+    }
+
+    private async Task<bool> ResolveAsync()
+    {
+        if (IsValid)
+        {
+            return true;
+        }
+
+        logger.LogInfo("Looking up Clockify IDs...");
+
         try
         {
-            var projects = await _connection.SendAsync("find project", c => c.V1.Workspaces[workspaceId].Projects
-                .GetAsync(q =>
-                {
-                    q.QueryParameters.Name = projectName;
-                    q.QueryParameters.StrictNameSearch = true;
-                    q.QueryParameters.PageSize = MaxPageSize;
-                    q.QueryParameters.Archived = false;
+            var resolvedIds = await LookUpIdsAsync();
 
-                    if (clientId is not null)
-                    {
-                        q.QueryParameters.Clients = [clientId];
-                    }
-                }));
-
-            if (projects is null || !projects.Any())
+            if (resolvedIds is null)
             {
-                logger.LogWarn($"Finding matching project failed, unable to find project: {_settings}");
-                return null;
+                ScheduleRetry();
+                return false;
             }
 
-            if (projects.Count > 1)
-            {
-                logger.LogWarn($"Finding matching project failed, multiple projects with the same name {projectName} found, consider setting a client name");
-                return null;
-            }
-            
-            logger.LogInfo("Finding matching project successful");
-            return projects.Single();
+            UseResolvedIds(resolvedIds);
+            logger.LogInfo("Looking up Clockify IDs successful");
+            return true;
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
+        catch (RateLimitedException exception)
         {
-            logger.LogWarn($"Finding matching project failed, unable to retrieve project {projectName}: {exception.Message}");
+            logger.LogWarn($"Looking up Clockify IDs skipped: {exception.Message}");
+            _nextResolveAttempt = exception.BlockedUntil;
+            return false;
+        }
+        catch (Exception exception) when (exception is ApiException or HttpRequestException)
+        {
+            logger.LogError($"Looking up Clockify IDs failed, check the API key and server URL: {exception.Message}");
+            ScheduleRetry();
+            return false;
+        }
+    }
+
+    private async Task<ResolvedIds> LookUpIdsAsync()
+    {
+        var user = await _connection.GetUserAsync();
+        if (string.IsNullOrEmpty(user?.Id))
+        {
+            logger.LogError("Looking up Clockify IDs failed, unable to get the user of the API key");
             return null;
         }
+
+        var workspace = await _connection.FindWorkspaceAsync(_settings.WorkspaceName);
+        if (workspace is null)
+        {
+            logger.LogError($"Looking up Clockify IDs failed, no workspace named '{_settings.WorkspaceName}'");
+            return null;
+        }
+
+        var resolvedIds = new ResolvedIds
+        {
+            Fingerprint = _fingerprint,
+            UserId = user.Id,
+            WorkspaceId = workspace.Id
+        };
+
+        if (!string.IsNullOrEmpty(_settings.ProjectName))
+        {
+            string clientId = null;
+
+            if (!string.IsNullOrEmpty(_settings.ClientName))
+            {
+                clientId = (await FindMatchingClientAsync(workspace.Id, _settings.ClientName))?.Id;
+                if (clientId is null)
+                {
+                    logger.LogError($"Looking up Clockify IDs failed, no client named '{_settings.ClientName}'");
+                    return null;
+                }
+            }
+
+            resolvedIds.ProjectId = (await FindMatchingProjectAsync(workspace.Id, _settings.ProjectName, clientId))?.Id;
+            if (resolvedIds.ProjectId is null)
+            {
+                return null;
+            }
+
+            // A missing task gets created when the timer is started
+            if (!string.IsNullOrEmpty(_settings.TaskName))
+            {
+                resolvedIds.TaskId = (await FindMatchingTaskAsync(workspace.Id, resolvedIds.ProjectId, _settings.TaskName))?.Id;
+            }
+        }
+
+        resolvedIds.TagIds = await FindMatchingTagsAsync(workspace.Id, _settings.Tags);
+
+        return resolvedIds;
+    }
+
+    private void UseResolvedIds(ResolvedIds resolvedIds)
+    {
+        _resolvedIds = resolvedIds;
+        _retryDelay = MinRetryDelay;
+    }
+
+    private void ScheduleRetry()
+    {
+        _nextResolveAttempt = DateTimeOffset.UtcNow + _retryDelay;
+        logger.LogWarn($"Looking up Clockify IDs again at {_nextResolveAttempt.ToLocalTime():HH:mm:ss}, or when the button is pressed or the settings change");
+
+        _retryDelay = TimeSpan.FromTicks(Math.Min(_retryDelay.Ticks * 2, MaxRetryDelay.Ticks));
+    }
+
+    private bool Matches(TimeEntryWithRatesDtoV1 entry)
+    {
+        var timerNameMatches = string.IsNullOrEmpty(_settings.TimerName) || entry.Description == _settings.TimerName;
+
+        if (string.IsNullOrEmpty(_settings.ProjectName))
+        {
+            return timerNameMatches;
+        }
+
+        return timerNameMatches
+               && entry.ProjectId == _resolvedIds.ProjectId
+               && (string.IsNullOrEmpty(_settings.TaskName) || string.IsNullOrEmpty(_resolvedIds.TaskId) || entry.TaskId == _resolvedIds.TaskId)
+               && (entry.TagIds ?? []).ToHashSet().SetEquals(_resolvedIds.TagIds ?? [])
+               && entry.Billable == _settings.Billable;
+    }
+
+    private async Task<ProjectDtoV1> FindMatchingProjectAsync(string workspaceId, string projectName, string clientId)
+    {
+        var projects = await _connection.SendAsync("find project", c => c.V1.Workspaces[workspaceId].Projects
+            .GetAsync(q =>
+            {
+                q.QueryParameters.Name = projectName;
+                q.QueryParameters.StrictNameSearch = true;
+                q.QueryParameters.PageSize = MaxPageSize;
+                q.QueryParameters.Archived = false;
+
+                if (clientId is not null)
+                {
+                    q.QueryParameters.Clients = [clientId];
+                }
+            }));
+
+        if (projects is null || projects.Count == 0)
+        {
+            logger.LogError($"Finding matching project failed, no project named '{projectName}'");
+            return null;
+        }
+
+        if (projects.Count > 1)
+        {
+            logger.LogError($"Finding matching project failed, multiple projects named '{projectName}' found, consider setting a client name");
+            return null;
+        }
+
+        return projects.Single();
     }
 
     private async Task<ClientWithCurrencyDtoV1> FindMatchingClientAsync(string workspaceId, string clientName)
     {
-        if (string.IsNullOrEmpty(clientName))
-        {
-            return null;
-        }
-        
-        try
-        {
-            var clientResponse = await _connection.SendAsync("find client", c => c.V1.Workspaces[workspaceId].Clients
-                .GetAsync(q =>
-                {
-                    q.QueryParameters.Name = clientName;
-                    q.QueryParameters.PageSize = MaxPageSize;
-                    q.QueryParameters.Archived = "false";
-                }));
-            
-            return clientResponse?.FirstOrDefault();
-        }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
-        {
-            logger.LogWarn($"Finding matching client failed, unable to retrieve client {clientName}: {exception.Message}");
-            return null;
-        }
+        var clients = await _connection.SendAsync("find client", c => c.V1.Workspaces[workspaceId].Clients
+            .GetAsync(q =>
+            {
+                q.QueryParameters.Name = clientName;
+                q.QueryParameters.PageSize = MaxPageSize;
+                q.QueryParameters.Archived = "false";
+            }));
+
+        return clients?.FirstOrDefault();
     }
 
     private async Task<TaskDtoV1> FindMatchingTaskAsync(string workspaceId, string projectId, string taskName)
     {
-        if (string.IsNullOrEmpty(taskName))
-        {
-            return null;
-        }
-        
-        try
-        {
-            var taskResponse = await _connection.SendAsync("find task", c => c.V1.Workspaces[workspaceId].Projects[projectId].Tasks
-                .GetAsync(q =>
-                {
-                    q.QueryParameters.Name = taskName;
-                    q.QueryParameters.StrictNameSearch = true;
-                    q.QueryParameters.PageSize = MaxPageSize;
-                }));
+        var tasks = await _connection.SendAsync("find task", c => c.V1.Workspaces[workspaceId].Projects[projectId].Tasks
+            .GetAsync(q =>
+            {
+                q.QueryParameters.Name = taskName;
+                q.QueryParameters.StrictNameSearch = true;
+                q.QueryParameters.PageSize = MaxPageSize;
+            }));
 
-            return taskResponse?.FirstOrDefault();
-        }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
-        {
-            logger.LogWarn($"Finding matching task failed, unable to retrieve task {taskName}: {exception.Message}");
-            return null;
-        }
+        return tasks?.FirstOrDefault();
     }
 
-    private async Task<string> FindOrCreateTaskAsync(string workspaceId, string projectId, string taskName)
+    private async Task<string> CreateTaskAsync()
     {
-        if (string.IsNullOrEmpty(taskName))
-        {
-            return null;
-        }
-        
-        var task = await FindMatchingTaskAsync(workspaceId, projectId, taskName);
-
-        if (!string.IsNullOrEmpty(task?.Id))
-        {
-            return task.Id;
-        }
-
-        var taskRequest = new TaskRequestV1
-        {
-            Name = taskName
-        };
-
         try
         {
-            _task = await _connection.SendAsync("create task", c => c.V1.Workspaces[workspaceId].Projects[projectId].Tasks.PostAsync(taskRequest));
-            return _task?.Id;
+            var task = await _connection.SendAsync("create task",
+                c => c.V1.Workspaces[_resolvedIds.WorkspaceId].Projects[_resolvedIds.ProjectId].Tasks
+                      .PostAsync(new TaskRequestV1 { Name = _settings.TaskName }));
+
+            return task?.Id;
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
+        catch (ApiException exception)
         {
-            logger.LogWarn($"Creating task failed, creation request failed for task {taskName}: {exception.Message}");
+            logger.LogWarn($"Creating task failed, creation request failed for task {_settings.TaskName}: {exception.Message}");
             return null;
         }
     }
@@ -410,49 +401,27 @@ public class ClockifyService(Logger logger)
         {
             return [];
         }
-        
+
         // █ is used as temporary escape character
         var tagList = tags.Replace("\\,", "█")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(t => t.Replace("█", ","))
             .ToArray();
 
-        if (!tagList.Any())
+        if (tagList.Length == 0)
         {
             return [];
         }
 
-        try
-        {
-            var tagsOnWorkspace = await _connection.SendAsync("get tags",
-                c => c.V1.Workspaces[workspaceId].Tags.GetAsync(q => q.QueryParameters.PageSize = MaxPageSize));
+        var tagsOnWorkspace = await _connection.SendAsync("get tags",
+            c => c.V1.Workspaces[workspaceId].Tags.GetAsync(q => q.QueryParameters.PageSize = MaxPageSize));
 
-            return tagsOnWorkspace is null ? [] : tagsOnWorkspace.Where(t => tagList.Contains(t.Name)).Select(t => t.Id).ToList();
-        }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
+        var tagIds = tagsOnWorkspace?.Where(t => tagList.Contains(t.Name)).Select(t => t.Id).ToList() ?? [];
+        if (tagIds.Count != tagList.Length)
         {
-            logger.LogWarn($"Finding matching tags failed, unable to retrieve tags for {tags}: {exception.Message}");
-            return [];
-        }
-    }
-
-    private async Task<bool> TestConnectionAsync()
-    {
-        if (_connection is null)
-        {
-            return false;
+            logger.LogWarn($"Finding matching tags, not all tags of '{tags}' exist in the workspace");
         }
 
-        try
-        {
-            _currentUser = await _connection.GetUserAsync();
-
-            return true;
-        }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
-        {
-            logger.LogDebug($"Testing connection failed, {exception.Message}");
-            return false;
-        }
+        return tagIds;
     }
 }
