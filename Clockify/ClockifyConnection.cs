@@ -23,6 +23,7 @@ public sealed class ClockifyConnection
     private readonly Logger _logger;
     private readonly ClockifyApiClient _client;
     private readonly SemaphoreSlim _lookupLock = new(1, 1);
+    private readonly ConcurrentDictionary<RunningTimersKey, RunningTimers> _runningTimers = new();
     private readonly Queue<DateTimeOffset> _recentRequests = new();
 
     private UserDtoV1 _user;
@@ -52,9 +53,16 @@ public sealed class ClockifyConnection
 
     public bool IsBlocked => DateTimeOffset.UtcNow < BlockedUntil;
 
+    public bool WasRateLimited { get; private set; }
+
     public static ClockifyConnection Get(string apiKey, string serverUrl, Logger logger)
     {
         return Connections.GetOrAdd(new ConnectionKey(apiKey, serverUrl), key => new ClockifyConnection(key.ApiKey, key.ServerUrl, logger));
+    }
+
+    public RunningTimers GetRunningTimers(string workspaceId, string userId)
+    {
+        return _runningTimers.GetOrAdd(new RunningTimersKey(workspaceId, userId), key => new RunningTimers(this, key.WorkspaceId, key.UserId));
     }
 
     public async Task<T> SendAsync<T>(string description, Func<ClockifyApiClient, Task<T>> request)
@@ -75,6 +83,7 @@ public sealed class ClockifyConnection
         {
             blockedUntil = DateTimeOffset.UtcNow + GetRetryAfter(exception);
             Interlocked.Exchange(ref _blockedUntilTicks, blockedUntil.UtcTicks);
+            WasRateLimited = true;
 
             _logger.LogWarn($"Clockify rate limit reached, pausing all requests until {blockedUntil.ToLocalTime():HH:mm:ss}");
             throw new RateLimitedException(blockedUntil);
