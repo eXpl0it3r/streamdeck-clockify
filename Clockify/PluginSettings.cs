@@ -20,8 +20,9 @@ public class PluginSettings
         TitleFormat = settings.TitleFormat;
         RefreshRate = settings.RefreshRate;
         ServerUrl = settings.ServerUrl;
+        ResolvedIds = settings.ResolvedIds;
     }
-    
+
     [JsonProperty(PropertyName = "apiKey")]
     public string ApiKey { get; set; } = string.Empty;
 
@@ -51,9 +52,12 @@ public class PluginSettings
 
     [JsonProperty(PropertyName = "refreshRate")]
     public uint RefreshRate { get; set; } = 5;
-    
+
     [JsonProperty(PropertyName = "serverUrl")]
     public string ServerUrl { get; set; } = "https://api.clockify.me/api";
+
+    [JsonProperty(PropertyName = "resolvedIds")]
+    public ResolvedIds ResolvedIds { get; set; }
 
     public override string ToString()
     {
