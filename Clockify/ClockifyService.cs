@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,6 +34,8 @@ public class ClockifyService(Logger logger)
 
     public bool IsValid => _resolvedIds is not null;
 
+    public ResolvedIds ResolvedIds => _resolvedIds;
+
     public void UpdateSettings(PluginSettings settings)
     {
         settings = new PluginSettings(settings);
@@ -62,6 +65,13 @@ public class ClockifyService(Logger logger)
         _resolvedIds = null;
         _retryDelay = MinRetryDelay;
         _nextResolveAttempt = DateTimeOffset.UtcNow + SettingsDebounce;
+
+        // IDs stored by an earlier run, no need to look them up again
+        if (_settingsValid && settings.ResolvedIds?.Fingerprint == fingerprint && settings.ResolvedIds.IsComplete)
+        {
+            logger.LogInfo("Updating settings, using stored IDs");
+            UseResolvedIds(settings.ResolvedIds);
+        }
     }
 
     public async Task<bool> TryResolveAsync(bool userInitiated)
@@ -192,11 +202,21 @@ public class ClockifyService(Logger logger)
             TaskId = _resolvedIds.TaskId
         };
 
-        await _connection.SendAsync("start timer",
-            c => c.V1.Workspaces[_resolvedIds.WorkspaceId].TimeEntries.PostAsync(timeEntryRequest));
+        try
+        {
+            await _connection.SendAsync("start timer",
+                c => c.V1.Workspaces[_resolvedIds.WorkspaceId].TimeEntries.PostAsync(timeEntryRequest));
 
-        logger.LogInfo("Toggling timer successful, timer has been started");
-        return true;
+            logger.LogInfo("Toggling timer successful, timer has been started");
+            return true;
+        }
+        catch (ApiException exception) when (exception.ResponseStatusCode is (int)HttpStatusCode.BadRequest or (int)HttpStatusCode.NotFound)
+        {
+            // The stored IDs might be outdated, e.g. the project was deleted, look them up again next time
+            logger.LogError($"Starting timer failed, looking up the IDs again on the next try: {exception.Message}");
+            ForgetResolvedIds();
+            return false;
+        }
     }
 
     private async Task<bool> ResolveAsync()
@@ -295,6 +315,12 @@ public class ClockifyService(Logger logger)
     {
         _resolvedIds = resolvedIds;
         _retryDelay = MinRetryDelay;
+    }
+
+    private void ForgetResolvedIds()
+    {
+        _resolvedIds = null;
+        _nextResolveAttempt = DateTimeOffset.UtcNow;
     }
 
     private void ScheduleRetry()
