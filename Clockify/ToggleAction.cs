@@ -123,7 +123,8 @@ public class ToggleAction : KeypadBase
             WorkspaceId = resolvedIds.WorkspaceId,
             ProjectId = resolvedIds.ProjectId,
             TaskId = resolvedIds.TaskId,
-            TagIds = [..resolvedIds.TagIds]
+            TagIds = [..resolvedIds.TagIds],
+            Plan = resolvedIds.Plan
         };
 
         await Connection.SetSettingsAsync(JObject.FromObject(_settings));

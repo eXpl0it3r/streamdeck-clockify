@@ -23,6 +23,7 @@ For new releases it usually takes 1-2 days until they're approved. In the meanti
   - **Billable** *(optional)* Check or uncheck the box to run the timer as billable or non-billable 
 - **Advanced**
   - **Client Name:** *(optional)* Set the client name assigned to the specified project
+    - Note: If a client name is set, it has to exist, otherwise the button won't start any timer
   - **Title Format:** *(optional)* Specify the format for the title to be displayed on the button
     - This can include any of:
       - `{workspaceName}` : The workspace name
@@ -31,7 +32,11 @@ For new releases it usually takes 1-2 days until they're approved. In the meanti
       - `{timerName}` : The timer name
       - `{clientName}` : The client name
       - `{timer}` : The current timer value when running. Blank when not running
-  - **Refresh Rate:** *(required)* Define how often the API is being called, the *default* is 5 Seconds 
+  - **Refresh Rate:** *(required)* Define how often the plugin checks for timers started or stopped outside of the Stream Deck, the *default* is Automatic
+    - "Automatic" checks every 5 minutes on the Free plan and every 5 seconds on paid plans, based on the plan Clockify reports for the workspace
+    - Your own key presses are shown right away, the refresh rate only matters for changes made in the web app, the desktop app or on your phone
+    - "Only on key press" never checks in the background
+    - Keep in mind, that the Free plan only allows 30 API requests per hour for the whole workspace
   - **Server Url:** *(required)* Change from the *default* URL to the API URL of your own/company instance
     - Note: Starting with V1.11 the URL should *not* end with `/v1` 
 
@@ -46,6 +51,7 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
 - Why am I not seeing the running timer on my button?
   - Make sure you haven't set a title, as this will override any other content
   - Make sure the API Key, Workspace name and optional the project and timer name
+  - If the settings were wrong, the plugin waits a bit before trying again, pressing the button tries right away
   - Make sure that for projects with the same name, different clients are set
 - Why are my tags missing on the timer?
   - Make sure the tags have been created through the web app, as the plugin doesn't create them
@@ -53,8 +59,13 @@ https://user-images.githubusercontent.com/920861/132741561-6f9f3ff0-a920-408d-82
 - Why does the timer always start with a negative number?
   - This can happen when your local computer time isn't in sync with the Clockify server time
   - Make sure you synchronize your clock with a time-server
-- Why does it always take some seconds to show the timer running?
-  - Due to API rate limits, there's some magical caching going on, leading to certain delays 
+- Why does it take a while until the button shows a timer I started in the web app?
+  - The plugin only checks for changes made outside the Stream Deck as often as the refresh rate allows, which is every 5 minutes on the Free plan by default
+  - Pressing the button always checks first, if the last check is older than a minute
+- Why do I get a yellow triangle after a while, even though the settings are correct?
+  - You likely ran into Clockify's API limit, the Free plan only allows 30 requests per hour for the whole workspace
+  - Check the log for "rate limit reached", it tells you until when the requests are paused
+  - Set a slower refresh rate and keep in mind, that other integrations in your workspace use the same limit
 - Why can't I select my Workspace and Project in a dropdown menu?
   - Because I was lazy 😅
 - Where can I find the logs?

@@ -26,6 +26,9 @@ public class ResolvedIds
     [JsonProperty(PropertyName = "tagIds")]
     public List<string> TagIds { get; set; } = [];
 
+    [JsonProperty(PropertyName = "plan")]
+    public string Plan { get; set; }
+
     public bool IsComplete => !string.IsNullOrEmpty(UserId) && !string.IsNullOrEmpty(WorkspaceId);
 
     public static string CreateFingerprint(PluginSettings settings)

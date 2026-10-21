@@ -60,16 +60,22 @@
                     <div class="sdpi-item">
                         <div class="sdpi-item-label">Refresh Rate</div>
                         <select class="sdpi-item-value sdProperty" id="refreshRate" oninput="setSettings()">
-                            <option value="1">1 Second</option>
-                            <option value="2">2 Seconds</option>
-                            <option value="5" selected>5 Seconds</option>
-                            <option value="10">10 Seconds</option>
-                            <option value="20">20 Seconds</option>
+                            <option value="-1" selected>Automatic</option>
+                            <option value="0">Only on key press</option>
+                            <option value="900">15 Minutes</option>
+                            <option value="600">10 Minutes</option>
+                            <option value="300">5 Minutes (Free plan)</option>
+                            <option value="60">1 Minute</option>
+                            <option value="20">20 Seconds (paid plan)</option>
+                            <option value="10">10 Seconds (paid plan)</option>
+                            <option value="5">5 Seconds (paid plan)</option>
+                            <option value="2">2 Seconds (paid plan)</option>
+                            <option value="1">1 Second (paid plan)</option>
                         </select>
                     </div>
                     <div class="sdpi-item">
                         <div class="sdpi-item-label">Server Url</div>
-                        <input class="sdpi-item-value sdProperty" id="serverUrl" value="https://api.clockify.me/api/v1" placeholder="Enter the ULR of the Server" oninput="setSettings()" required>
+                        <input class="sdpi-item-value sdProperty" id="serverUrl" value="https://api.clockify.me/api" placeholder="Enter the URL of the Server" oninput="setSettings()" required>
                     </div>
                 </div>
             </div>
