@@ -33,6 +33,10 @@ public class ClockifyService(Logger logger)
     // Polling interval used after Clockify answered with 429, no matter the refresh rate setting
     private static readonly TimeSpan RateLimitedRefreshRate = TimeSpan.FromMinutes(5);
 
+    // Automatic refresh rates, the Free plan allows 30 requests per hour, paid plans 20 per second
+    private static readonly TimeSpan FreePlanRefreshRate = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan PaidPlanRefreshRate = TimeSpan.FromSeconds(5);
+
     private readonly TimeSpan _timeOut = TimeSpan.FromSeconds(20);
     private readonly SemaphoreSlim _cacheLock = new(1, 1);
 
@@ -126,7 +130,7 @@ public class ClockifyService(Logger logger)
             return;
         }
 
-        var refreshRate = TimeSpan.FromSeconds(_settings.RefreshRate);
+        var refreshRate = GetRefreshRate();
         if (_connection.WasRateLimited && refreshRate < RateLimitedRefreshRate)
         {
             refreshRate = RateLimitedRefreshRate;
@@ -268,7 +272,7 @@ public class ClockifyService(Logger logger)
             }
 
             UseResolvedIds(resolvedIds);
-            logger.LogInfo("Looking up Clockify IDs successful");
+            logger.LogInfo($"Looking up Clockify IDs successful, workspace plan '{resolvedIds.Plan}'");
             return true;
         }
         catch (RateLimitedException exception)
@@ -305,7 +309,8 @@ public class ClockifyService(Logger logger)
         {
             Fingerprint = _fingerprint,
             UserId = user.Id,
-            WorkspaceId = workspace.Id
+            WorkspaceId = workspace.Id,
+            Plan = workspace.FeatureSubscriptionType
         };
 
         if (!string.IsNullOrEmpty(_settings.ProjectName))
@@ -352,6 +357,18 @@ public class ClockifyService(Logger logger)
         _resolvedIds = null;
         _runningTimers = null;
         _nextResolveAttempt = DateTimeOffset.UtcNow;
+    }
+
+    private TimeSpan GetRefreshRate()
+    {
+        if (_settings.RefreshRate > 0)
+        {
+            return TimeSpan.FromSeconds(_settings.RefreshRate);
+        }
+
+        // A server that doesn't report a plan is treated like Free, to be on the safe side
+        var isFreePlan = string.IsNullOrEmpty(_resolvedIds.Plan) || _resolvedIds.Plan.StartsWith("FREE", StringComparison.OrdinalIgnoreCase);
+        return isFreePlan ? FreePlanRefreshRate : PaidPlanRefreshRate;
     }
 
     private void ScheduleRetry()
