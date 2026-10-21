@@ -4,7 +4,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using ClockifyClient;
 using ClockifyClient.Models;
 using Microsoft.Kiota.Abstractions;
 
@@ -18,14 +17,14 @@ public class ClockifyService(Logger logger)
 
     private PluginSettings _settings = new();
 
-    private ClockifyApiClient _clockifyClient;
+    private ClockifyConnection _connection;
     private UserDtoV1 _currentUser = new();
     private WorkspaceDtoV1 _workspace = new();
     private ProjectDtoV1 _project = new();
     private List<string> _tags = [];
     private TaskDtoV1 _task = new();
 
-    public bool IsValid => _clockifyClient is not null
+    public bool IsValid => _connection is not null
                            && !string.IsNullOrWhiteSpace(_settings.WorkspaceName)
                            && _workspace is not null;
 
@@ -53,12 +52,12 @@ public class ClockifyService(Logger logger)
             try
             {
                 var timeEntryRequest = await CreateTimeEntryRequestAsync();
-                await _clockifyClient.V1.Workspaces[_workspace.Id].TimeEntries.PostAsync(timeEntryRequest);
+                await _connection.SendAsync("start timer", c => c.V1.Workspaces[_workspace.Id].TimeEntries.PostAsync(timeEntryRequest));
 
                 logger.LogInfo("Toggling trimer successful, timer has been started");
                 return true;
             }
-            catch (Exception exception) when (exception is ApiException or HttpRequestException)
+            catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
             {
                 logger.LogError($"Toggling trimer failed, TimeEntry creation failed: {exception.Message}");
                 return false;
@@ -109,12 +108,12 @@ public class ClockifyService(Logger logger)
                     return;
                 }
 
-                _clockifyClient = ClockifyApiClientFactory.Create(settings.ApiKey, settings.ServerUrl);
+                _connection = ClockifyConnection.Get(settings.ApiKey, settings.ServerUrl, logger);
 
                 if (!await TestConnectionAsync())
                 {
                     logger.LogError("Updating settings failed, invalid server URL or API key");
-                    _clockifyClient = null;
+                    _connection = null;
                     _currentUser = new UserDtoV1();
                     return;
                 }
@@ -146,8 +145,8 @@ public class ClockifyService(Logger logger)
 
         try
         {
-            var timeEntries = await _clockifyClient.V1.Workspaces[_workspace.Id].User[_currentUser.Id].TimeEntries
-                                                   .GetAsync(p => p.QueryParameters.InProgress = "true");
+            var timeEntries = await _connection.SendAsync("get running timer",
+                c => c.V1.Workspaces[_workspace.Id].User[_currentUser.Id].TimeEntries.GetAsync(p => p.QueryParameters.InProgress = "true"));
 
             if (string.IsNullOrEmpty(_settings.ProjectName))
             {
@@ -167,7 +166,7 @@ public class ClockifyService(Logger logger)
                                                                                                                                               .SequenceEqual(_tags.OrderBy(s => s, StringComparer.InvariantCulture))))
                                                     && t.Billable == _settings.Billable);
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException)
+        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
         {
             logger.LogError($"Fetching running timer failed, TimeEntry request failed: {exception.Message}");
             return null;
@@ -214,8 +213,7 @@ public class ClockifyService(Logger logger)
         
         try
         {
-            var workspaces = await _clockifyClient.V1.Workspaces.GetAsync();
-            _workspace = workspaces?.SingleOrDefault(w => w.Name == _settings.WorkspaceName);
+            _workspace = await _connection.FindWorkspaceAsync(_settings.WorkspaceName);
 
             if (_workspace is not null)
             {
@@ -231,7 +229,7 @@ public class ClockifyService(Logger logger)
             
             logger.LogInfo("Reloading cache successful");
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException)
+        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
         {
             logger.LogWarn($"Reloading cache failed, unable to retrieve workspaces: {exception.Message}");
         }
@@ -265,10 +263,10 @@ public class ClockifyService(Logger logger)
 
         try
         {
-            await _clockifyClient.V1.Workspaces[_workspace.Id].TimeEntries[runningTimer.Id].PutAsync(timerUpdate);
+            await _connection.SendAsync("stop timer", c => c.V1.Workspaces[_workspace.Id].TimeEntries[runningTimer.Id].PutAsync(timerUpdate));
             logger.LogInfo($"Stopping timer successful, timer in workspace {_settings.WorkspaceName}: {runningTimer.ProjectId}, {runningTimer.TaskId}, {runningTimer.Description}");
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException)
+        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
         {
             logger.LogError($"Stopping time failed, timer in workspace {_settings.WorkspaceName}: {runningTimer.ProjectId}, {runningTimer.TaskId}, {runningTimer.Description}: {exception.Message}");
         }
@@ -287,7 +285,7 @@ public class ClockifyService(Logger logger)
         
         try
         {
-            var projects = await _clockifyClient.V1.Workspaces[workspaceId].Projects
+            var projects = await _connection.SendAsync("find project", c => c.V1.Workspaces[workspaceId].Projects
                 .GetAsync(q =>
                 {
                     q.QueryParameters.Name = projectName;
@@ -299,7 +297,7 @@ public class ClockifyService(Logger logger)
                     {
                         q.QueryParameters.Clients = [clientId];
                     }
-                });
+                }));
 
             if (projects is null || !projects.Any())
             {
@@ -316,7 +314,7 @@ public class ClockifyService(Logger logger)
             logger.LogInfo("Finding matching project successful");
             return projects.Single();
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException)
+        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
         {
             logger.LogWarn($"Finding matching project failed, unable to retrieve project {projectName}: {exception.Message}");
             return null;
@@ -332,17 +330,17 @@ public class ClockifyService(Logger logger)
         
         try
         {
-            var clientResponse = await _clockifyClient.V1.Workspaces[workspaceId].Clients
+            var clientResponse = await _connection.SendAsync("find client", c => c.V1.Workspaces[workspaceId].Clients
                 .GetAsync(q =>
                 {
                     q.QueryParameters.Name = clientName;
                     q.QueryParameters.PageSize = MaxPageSize;
                     q.QueryParameters.Archived = "false";
-                });
+                }));
             
             return clientResponse?.FirstOrDefault();
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException)
+        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
         {
             logger.LogWarn($"Finding matching client failed, unable to retrieve client {clientName}: {exception.Message}");
             return null;
@@ -358,17 +356,17 @@ public class ClockifyService(Logger logger)
         
         try
         {
-            var taskResponse = await _clockifyClient.V1.Workspaces[workspaceId].Projects[projectId].Tasks
+            var taskResponse = await _connection.SendAsync("find task", c => c.V1.Workspaces[workspaceId].Projects[projectId].Tasks
                 .GetAsync(q =>
                 {
                     q.QueryParameters.Name = taskName;
                     q.QueryParameters.StrictNameSearch = true;
                     q.QueryParameters.PageSize = MaxPageSize;
-                });
+                }));
 
             return taskResponse?.FirstOrDefault();
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException)
+        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
         {
             logger.LogWarn($"Finding matching task failed, unable to retrieve task {taskName}: {exception.Message}");
             return null;
@@ -396,10 +394,10 @@ public class ClockifyService(Logger logger)
 
         try
         {
-            _task = await _clockifyClient.V1.Workspaces[workspaceId].Projects[projectId].Tasks.PostAsync(taskRequest);
+            _task = await _connection.SendAsync("create task", c => c.V1.Workspaces[workspaceId].Projects[projectId].Tasks.PostAsync(taskRequest));
             return _task?.Id;
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException)
+        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
         {
             logger.LogWarn($"Creating task failed, creation request failed for task {taskName}: {exception.Message}");
             return null;
@@ -426,12 +424,12 @@ public class ClockifyService(Logger logger)
 
         try
         {
-            var tagsOnWorkspace = await _clockifyClient.V1.Workspaces[workspaceId].Tags
-                .GetAsync(q => q.QueryParameters.PageSize = MaxPageSize);
+            var tagsOnWorkspace = await _connection.SendAsync("get tags",
+                c => c.V1.Workspaces[workspaceId].Tags.GetAsync(q => q.QueryParameters.PageSize = MaxPageSize));
 
             return tagsOnWorkspace is null ? [] : tagsOnWorkspace.Where(t => tagList.Contains(t.Name)).Select(t => t.Id).ToList();
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException)
+        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
         {
             logger.LogWarn($"Finding matching tags failed, unable to retrieve tags for {tags}: {exception.Message}");
             return [];
@@ -440,19 +438,18 @@ public class ClockifyService(Logger logger)
 
     private async Task<bool> TestConnectionAsync()
     {
-        if (_clockifyClient is null)
+        if (_connection is null)
         {
             return false;
         }
 
         try
         {
-            var user = await _clockifyClient.V1.User.GetAsync();
-            _currentUser = user;
+            _currentUser = await _connection.GetUserAsync();
 
             return true;
         }
-        catch (Exception exception) when ( exception is ApiException or HttpRequestException)
+        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
         {
             logger.LogDebug($"Testing connection failed, {exception.Message}");
             return false;
