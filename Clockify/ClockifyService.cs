@@ -10,6 +10,14 @@ using Microsoft.Kiota.Abstractions;
 
 namespace Clockify;
 
+public enum ToggleResult
+{
+    Started,
+    Stopped,
+    Failed,
+    RateLimited
+}
+
 public class ClockifyService(Logger logger)
 {
     private const int MaxPageSize = 5000;
@@ -19,6 +27,12 @@ public class ClockifyService(Logger logger)
     private static readonly TimeSpan MinRetryDelay = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromMinutes(30);
 
+    // Before toggling, the running timer is fetched again if it's older than this
+    private static readonly TimeSpan MaxStateAgeOnToggle = TimeSpan.FromSeconds(60);
+
+    // Polling interval used after Clockify answered with 429, no matter the refresh rate setting
+    private static readonly TimeSpan RateLimitedRefreshRate = TimeSpan.FromMinutes(5);
+
     private readonly TimeSpan _timeOut = TimeSpan.FromSeconds(20);
     private readonly SemaphoreSlim _cacheLock = new(1, 1);
 
@@ -27,14 +41,17 @@ public class ClockifyService(Logger logger)
     private bool _settingsValid;
 
     private ClockifyConnection _connection;
+    private RunningTimers _runningTimers;
     private ResolvedIds _resolvedIds;
 
     private DateTimeOffset _nextResolveAttempt = DateTimeOffset.MinValue;
     private TimeSpan _retryDelay = MinRetryDelay;
 
-    public bool IsValid => _resolvedIds is not null;
+    public bool IsValid => _resolvedIds is not null && _runningTimers is not null;
 
     public ResolvedIds ResolvedIds => _resolvedIds;
+
+    public bool IsRateLimited => _connection?.IsBlocked == true;
 
     public void UpdateSettings(PluginSettings settings)
     {
@@ -63,6 +80,7 @@ public class ClockifyService(Logger logger)
 
         _connection = _settingsValid ? ClockifyConnection.Get(settings.ApiKey, settings.ServerUrl, logger) : null;
         _resolvedIds = null;
+        _runningTimers = null;
         _retryDelay = MinRetryDelay;
         _nextResolveAttempt = DateTimeOffset.UtcNow + SettingsDebounce;
 
@@ -101,35 +119,45 @@ public class ClockifyService(Logger logger)
         }
     }
 
-    public async Task<TimeEntryWithRatesDtoV1> FetchRunningTimerAsync()
+    public async Task RefreshAsync()
     {
-        if (!IsValid || !await _cacheLock.WaitAsync(_timeOut))
+        if (!IsValid || _settings.RefreshRate == 0)
         {
-            return null;
+            return;
+        }
+
+        var refreshRate = TimeSpan.FromSeconds(_settings.RefreshRate);
+        if (_connection.WasRateLimited && refreshRate < RateLimitedRefreshRate)
+        {
+            refreshRate = RateLimitedRefreshRate;
         }
 
         try
         {
-            return await GetRunningTimerAsync();
+            await _runningTimers.SyncAsync(refreshRate);
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
+        catch (RateLimitedException exception)
+        {
+            logger.LogWarn($"Fetching running timer skipped: {exception.Message}");
+        }
+        catch (Exception exception) when (exception is ApiException or HttpRequestException)
         {
             logger.LogError($"Fetching running timer failed: {exception.Message}");
-            return null;
-        }
-        finally
-        {
-            _cacheLock.Release();
         }
     }
 
-    public async Task<bool> ToggleTimerAsync()
+    public RunningEntry GetRunningTimer()
+    {
+        return IsValid ? _runningTimers.Entries.FirstOrDefault(Matches) : null;
+    }
+
+    public async Task<ToggleResult> ToggleTimerAsync()
     {
         logger.LogInfo("Toggling timer...");
 
         if (!await _cacheLock.WaitAsync(_timeOut))
         {
-            return false;
+            return ToggleResult.Failed;
         }
 
         try
@@ -137,19 +165,25 @@ public class ClockifyService(Logger logger)
             if (!IsValid && (!_settingsValid || !await ResolveAsync()))
             {
                 logger.LogError($"Toggling timer failed, invalid settings: {_settings}");
-                return false;
+                return IsRateLimited ? ToggleResult.RateLimited : ToggleResult.Failed;
             }
 
-            var runningTimer = await GetRunningTimerAsync();
+            // Only fetch the running timer if it might be outdated, e.g. when it was changed in the web app
+            await _runningTimers.SyncAsync(MaxStateAgeOnToggle, force: true);
 
-            return runningTimer is not null
-                ? await StopTimerAsync(runningTimer)
+            return GetRunningTimer() is not null
+                ? await StopTimerAsync()
                 : await StartTimerAsync();
         }
-        catch (Exception exception) when (exception is ApiException or HttpRequestException or RateLimitedException)
+        catch (RateLimitedException exception)
+        {
+            logger.LogWarn($"Toggling timer failed: {exception.Message}");
+            return ToggleResult.RateLimited;
+        }
+        catch (Exception exception) when (exception is ApiException or HttpRequestException)
         {
             logger.LogError($"Toggling timer failed: {exception.Message}");
-            return false;
+            return ToggleResult.Failed;
         }
         finally
         {
@@ -157,35 +191,26 @@ public class ClockifyService(Logger logger)
         }
     }
 
-    private async Task<TimeEntryWithRatesDtoV1> GetRunningTimerAsync()
+    private async Task<ToggleResult> StopTimerAsync()
     {
-        var timeEntries = await _connection.SendAsync("get running timer",
-            c => c.V1.Workspaces[_resolvedIds.WorkspaceId].User[_resolvedIds.UserId].TimeEntries.GetAsync(p => p.QueryParameters.InProgress = "true"));
-
-        return timeEntries?.FirstOrDefault(Matches);
-    }
-
-    private async Task<bool> StopTimerAsync(TimeEntryWithRatesDtoV1 runningTimer)
-    {
-        var timerUpdate = new UpdateTimeEntryRequest
+        try
         {
-            Billable = runningTimer.Billable,
-            Start = runningTimer.TimeInterval?.Start,
-            End = DateTimeOffset.UtcNow,
-            ProjectId = runningTimer.ProjectId,
-            TaskId = runningTimer.TaskId,
-            Description = runningTimer.Description,
-            TagIds = runningTimer.TagIds
-        };
+            // Stops whatever timer runs for the user, which is the matching one, see the sync above
+            await _connection.SendAsync("stop timer",
+                c => c.V1.Workspaces[_resolvedIds.WorkspaceId].User[_resolvedIds.UserId].TimeEntries
+                      .PatchAsync(new StopTimeEntryRequest { End = DateTimeOffset.UtcNow }));
+        }
+        catch (ApiException exception) when (exception.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+        {
+            logger.LogInfo("Stopping timer, timer was already stopped");
+        }
 
-        await _connection.SendAsync("stop timer",
-            c => c.V1.Workspaces[_resolvedIds.WorkspaceId].TimeEntries[runningTimer.Id].PutAsync(timerUpdate));
-
+        _runningTimers.SetStopped();
         logger.LogInfo("Toggling timer successful, timer has been stopped");
-        return true;
+        return ToggleResult.Stopped;
     }
 
-    private async Task<bool> StartTimerAsync()
+    private async Task<ToggleResult> StartTimerAsync()
     {
         if (!string.IsNullOrEmpty(_settings.TaskName) && string.IsNullOrEmpty(_resolvedIds.TaskId))
         {
@@ -204,18 +229,22 @@ public class ClockifyService(Logger logger)
 
         try
         {
-            await _connection.SendAsync("start timer",
+            var timeEntry = await _connection.SendAsync("start timer",
                 c => c.V1.Workspaces[_resolvedIds.WorkspaceId].TimeEntries.PostAsync(timeEntryRequest));
 
+            _runningTimers.SetStarted(timeEntry is not null
+                ? RunningEntry.From(timeEntry)
+                : new RunningEntry(null, timeEntryRequest.Start, timeEntryRequest.ProjectId, timeEntryRequest.TaskId, timeEntryRequest.Description, timeEntryRequest.TagIds, timeEntryRequest.Billable));
+
             logger.LogInfo("Toggling timer successful, timer has been started");
-            return true;
+            return ToggleResult.Started;
         }
         catch (ApiException exception) when (exception.ResponseStatusCode is (int)HttpStatusCode.BadRequest or (int)HttpStatusCode.NotFound)
         {
             // The stored IDs might be outdated, e.g. the project was deleted, look them up again next time
             logger.LogError($"Starting timer failed, looking up the IDs again on the next try: {exception.Message}");
             ForgetResolvedIds();
-            return false;
+            return ToggleResult.Failed;
         }
     }
 
@@ -314,12 +343,14 @@ public class ClockifyService(Logger logger)
     private void UseResolvedIds(ResolvedIds resolvedIds)
     {
         _resolvedIds = resolvedIds;
+        _runningTimers = _connection.GetRunningTimers(resolvedIds.WorkspaceId, resolvedIds.UserId);
         _retryDelay = MinRetryDelay;
     }
 
     private void ForgetResolvedIds()
     {
         _resolvedIds = null;
+        _runningTimers = null;
         _nextResolveAttempt = DateTimeOffset.UtcNow;
     }
 
@@ -331,7 +362,7 @@ public class ClockifyService(Logger logger)
         _retryDelay = TimeSpan.FromTicks(Math.Min(_retryDelay.Ticks * 2, MaxRetryDelay.Ticks));
     }
 
-    private bool Matches(TimeEntryWithRatesDtoV1 entry)
+    private bool Matches(RunningEntry entry)
     {
         var timerNameMatches = string.IsNullOrEmpty(_settings.TimerName) || entry.Description == _settings.TimerName;
 
@@ -343,7 +374,7 @@ public class ClockifyService(Logger logger)
         return timerNameMatches
                && entry.ProjectId == _resolvedIds.ProjectId
                && (string.IsNullOrEmpty(_settings.TaskName) || string.IsNullOrEmpty(_resolvedIds.TaskId) || entry.TaskId == _resolvedIds.TaskId)
-               && (entry.TagIds ?? []).ToHashSet().SetEquals(_resolvedIds.TagIds ?? [])
+               && entry.TagIds.ToHashSet().SetEquals(_resolvedIds.TagIds ?? [])
                && entry.Billable == _settings.Billable;
     }
 

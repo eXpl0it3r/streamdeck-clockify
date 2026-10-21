@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 using System.Threading.Tasks;
 using BarRaider.SdTools;
 using Newtonsoft.Json.Linq;
@@ -11,16 +12,17 @@ namespace Clockify;
 public class ToggleAction : KeypadBase
 {
     private readonly Logger _logger;
-    private readonly ButtonState _buttonState;
     private readonly ClockifyService _clockifyService;
 
     private PluginSettings _settings;
+    private int _tickRunning;
+    private uint? _shownState;
+    private string _shownTitle;
 
     public ToggleAction(ISDConnection connection, InitialPayload payload)
         : base(connection, payload)
     {
         _logger = new Logger(BarRaider.SdTools.Logger.Instance);
-        _buttonState = new ButtonState();
         _clockifyService = new ClockifyService(_logger);
 
         _logger.LogInfo("Creating ToggleAction...");
@@ -42,61 +44,46 @@ public class ToggleAction : KeypadBase
     {
         _logger.LogInfo("Key Released");
 
-        if (!await _clockifyService.ToggleTimerAsync())
+        var result = await _clockifyService.ToggleTimerAsync();
+
+        if (result is ToggleResult.Failed or ToggleResult.RateLimited)
         {
             await Connection.ShowAlert();
         }
 
         await StoreResolvedIdsAsync();
 
-        // Immediately update the button
-        _buttonState.Ticks = _settings.RefreshRate;
-        OnTick();
+        // The Stream Deck flips the button state on key press by itself
+        _shownState = null;
+        await RenderAsync();
     }
 
     public override async void OnTick()
     {
-        if (!await _clockifyService.TryResolveAsync(userInitiated: false))
+        // A slow request shouldn't pile up ticks
+        if (Interlocked.Exchange(ref _tickRunning, 1) == 1)
         {
             return;
         }
 
-        await StoreResolvedIdsAsync();
-
-        if (_buttonState.Ticks >= _settings.RefreshRate)
+        try
         {
-            var timer = await _clockifyService.FetchRunningTimerAsync();
-            var timerTime = string.Empty;
-
-            if (timer?.TimeInterval?.Start != null)
+            if (await _clockifyService.TryResolveAsync(userInitiated: false))
             {
-                var timeDifference = DateTime.UtcNow - timer.TimeInterval.Start.Value.UtcDateTime;
-                timerTime = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
-                
-                await Connection.SetStateAsync(DisplayState.Active);
-                _buttonState.LastStart = timer.TimeInterval.Start.Value.UtcDateTime;
-            }
-            else
-            {
-                await Connection.SetStateAsync(DisplayState.Inactive);
-                _buttonState.LastStart = null;
+                await StoreResolvedIdsAsync();
+                await _clockifyService.RefreshAsync();
             }
 
-            await Connection.SetTitleAsync(TextFormatter.CreateTimerText(_settings, timerTime));
-            _buttonState.Ticks = 0;
-            return;
+            await RenderAsync();
         }
-
-        if (_buttonState.LastStart.HasValue)
+        catch (Exception exception)
         {
-            var timeDifference = DateTime.UtcNow - _buttonState.LastStart.Value;
-            var timerTime = $"{timeDifference.Hours:d2}:{timeDifference.Minutes:d2}:{timeDifference.Seconds:d2}";
-                
-            await Connection.SetStateAsync(DisplayState.Active);
-            await Connection.SetTitleAsync(TextFormatter.CreateTimerText(_settings, timerTime));
+            _logger.LogError($"Updating button failed: {exception.Message}");
         }
-
-        _buttonState.Ticks++;
+        finally
+        {
+            Interlocked.Exchange(ref _tickRunning, 0);
+        }
     }
 
     public override void ReceivedSettings(ReceivedSettingsPayload payload)
@@ -140,5 +127,33 @@ public class ToggleAction : KeypadBase
         };
 
         await Connection.SetSettingsAsync(JObject.FromObject(_settings));
+    }
+
+    private async Task RenderAsync()
+    {
+        var timer = _clockifyService.GetRunningTimer();
+        var timerTime = string.Empty;
+        var state = DisplayState.Inactive;
+
+        if (timer?.Start is not null)
+        {
+            var elapsed = DateTimeOffset.UtcNow - timer.Start.Value;
+            timerTime = $"{(int)elapsed.TotalHours:d2}:{elapsed.Minutes:d2}:{elapsed.Seconds:d2}";
+            state = DisplayState.Active;
+        }
+
+        var title = TextFormatter.CreateTimerText(_settings, timerTime);
+
+        if (_shownState != state)
+        {
+            await Connection.SetStateAsync(state);
+            _shownState = state;
+        }
+
+        if (_shownTitle != title)
+        {
+            await Connection.SetTitleAsync(title);
+            _shownTitle = title;
+        }
     }
 }
