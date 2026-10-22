@@ -29,7 +29,7 @@
   "Icon": "Images/clockifyIcon",
   "URL": "https://duerrenberger.dev",
   "UUID": "dev.duerrenberger.clockify",
-  "Version": "1.17",
+  "Version": "1.18",
   "CodePathWin": "Windows/dev.duerrenberger.clockify.exe",
   "CodePathMac": "macOS/dev.duerrenberger.clockify",
   "Category": "Time Tracking",
