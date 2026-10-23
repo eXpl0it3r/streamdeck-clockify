@@ -52,7 +52,7 @@ public class PluginSettings
 
     public const int AutomaticRefreshRate = -1;
 
-    [JsonProperty(PropertyName = "refreshRate")]
+    [JsonProperty(PropertyName = "refreshInterval")]
     public int RefreshRate { get; set; } = AutomaticRefreshRate;
 
     [JsonProperty(PropertyName = "serverUrl")]
